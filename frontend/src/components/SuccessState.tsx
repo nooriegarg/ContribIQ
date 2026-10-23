@@ -11,7 +11,7 @@ export default function SuccessState({ onRedirectDone }: Props) {
     const raf = requestAnimationFrame(() => {
       requestAnimationFrame(() => setBarWidth(100))
     })
-    const timer = setTimeout(onRedirectDone, 2700)
+    const timer = setTimeout(onRedirectDone, 3000)
     return () => {
       cancelAnimationFrame(raf)
       clearTimeout(timer)
