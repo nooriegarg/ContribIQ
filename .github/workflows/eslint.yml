@@ -11,48 +11,78 @@ name: ESLint
 
 on:
   push:
-    branches: [ "main" ]
+    branches: ["main"]
   pull_request:
-    # The branches below must be a subset of the branches above
-    branches: [ "main" ]
+    branches: ["main"]
   schedule:
-    - cron: '28 18 * * 4'
+    - cron: "28 18 * * 4"
 
 jobs:
   eslint:
     name: Run eslint scanning
     runs-on: ubuntu-latest
+
     permissions:
       contents: read
       security-events: write
-      actions: read # only required for a private repository by github/codeql-action/upload-sarif to get the Action run status
+      actions: read
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Install ESLint
-        run: |
-          npm install eslint@8.10.0
-          npm install @microsoft/eslint-formatter-sarif@3.1.0
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
 
-      - name: Run ESLint
-        env:
-          SARIF_ESLINT_IGNORE_SUPPRESSED: "true"
-        run: npx eslint .
-          --config .eslintrc.js
-          --ext .js,.jsx,.ts,.tsx
-          --format @microsoft/eslint-formatter-sarif
-          --output-file eslint-results.sarif
-        continue-on-error: true
+      - name: Install dependencies
+        run: npm install
 
       - name: Create ESLint config if missing
         run: |
           if [ ! -f .eslintrc.js ] && [ ! -f .eslintrc.json ] && [ ! -f .eslintrc.yml ]; then
-            echo 'module.exports = { env: { browser: true, es2021: true, node: true }, extends: ["eslint:recommended"], parserOptions: { ecmaVersion: "latest", sourceType: "module" }, ignorePatterns: ["node_modules/", "dist/", "build/"] }' > .eslintrc.js
+            echo 'module.exports = {
+              env: {
+                browser: true,
+                es2021: true,
+                node: true
+              },
+              extends: ["eslint:recommended"],
+              parserOptions: {
+                ecmaVersion: "latest",
+                sourceType: "module"
+              },
+              ignorePatterns: [
+                "node_modules/",
+                "dist/",
+                "build/"
+              ]
+            }' > .eslintrc.js
           fi
 
+      - name: Run ESLint
+        env:
+          SARIF_ESLINT_IGNORE_SUPPRESSED: "true"
+        run: |
+          npx eslint . \
+            --config .eslintrc.js \
+            --ext .js,.jsx,.ts,.tsx \
+            --format @microsoft/eslint-formatter-sarif \
+            --output-file eslint-results.sarif
+        continue-on-error: true
+
+      - name: Check SARIF file
+        run: |
+          if [ ! -f eslint-results.sarif ]; then
+            echo "ESLint SARIF file was not created"
+            exit 1
+          fi
+          echo "ESLint SARIF file created successfully"
+          ls -lh eslint-results.sarif
+
       - name: Upload analysis results to GitHub
-        uses: github/codeql-action/upload-sarif@v3
+        uses: github/codeql-action/upload-sarif@v4
         with:
           sarif_file: eslint-results.sarif
           wait-for-processing: true
