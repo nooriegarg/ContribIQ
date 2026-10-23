@@ -45,6 +45,12 @@ jobs:
           --output-file eslint-results.sarif
         continue-on-error: true
 
+      - name: Create ESLint config if missing
+        run: |
+          if [ ! -f .eslintrc.js ] && [ ! -f .eslintrc.json ] && [ ! -f .eslintrc.yml ]; then
+            echo 'module.exports = { env: { browser: true, es2021: true, node: true }, extends: ["eslint:recommended"], parserOptions: { ecmaVersion: "latest", sourceType: "module" }, ignorePatterns: ["node_modules/", "dist/", "build/"] }' > .eslintrc.js
+          fi
+
       - name: Upload analysis results to GitHub
         uses: github/codeql-action/upload-sarif@v3
         with:
