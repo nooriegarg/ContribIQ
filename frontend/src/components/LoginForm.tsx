@@ -3,6 +3,7 @@ import Alert from './Alert'
 import GitHubButton from './GitHubButton'
 import { loginWithEmail, requestPasswordReset, getGitHubOAuthUrl } from '../api/auth'
 import { useAuth } from '../context/AuthContext'
+import { validateEmail } from '../utils/validation'
 
 interface Props {
   onSuccess: () => void
@@ -21,10 +22,6 @@ export default function LoginForm({ onSuccess }: Props) {
   const [alert, setAlert]           = useState<AlertState>(null)
   const [emailError, setEmailError] = useState('')
   const [pwdError, setPwdError]     = useState('')
-
-  function validateEmail(v: string) {
-    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v.trim())
-  }
 
   function clearFieldErrors() {
     setEmailError('')

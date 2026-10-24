@@ -2,6 +2,7 @@ import { useState } from 'react'
 import Alert from './Alert'
 import GitHubButton from './GitHubButton'
 import { getGitHubOAuthUrl } from '../api/auth'
+import { validateEmail } from '../utils/validation'
 
 interface Props {
   onSwitchToLogin: () => void
@@ -19,10 +20,6 @@ export default function SignupForm({ onSwitchToLogin }: Props) {
   const [nameError, setNameError]   = useState('')
   const [emailError, setEmailError] = useState('')
   const [pwdError, setPwdError]     = useState('')
-
-  function validateEmail(v: string) {
-    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v.trim())
-  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
