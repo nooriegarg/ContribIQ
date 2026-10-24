@@ -1470,7 +1470,14 @@ if (analyzeBtn) {
     // Update repo display
     var repoName = url.replace('https://','').replace('http://','').replace('github.com/','');
     document.getElementById('sb-repo-name-txt').textContent = repoName;
-    document.getElementById('ld-url').textContent = url.startsWith('github.com') ? url : 'github.com/' + repoName;
+    var displayUrl;
+    try {
+      var parsed = new URL(url.startsWith('http') ? url : 'https://' + url);
+      displayUrl = parsed.hostname === 'github.com' ? parsed.pathname.slice(1) ? 'github.com' + parsed.pathname : 'github.com/' + repoName : 'github.com/' + repoName;
+    } catch (_) {
+      displayUrl = 'github.com/' + repoName;
+    }
+    document.getElementById('ld-url').textContent = displayUrl;
     document.getElementById('sb-repo-pill').classList.add('show');
     runLoadingSequence();
   });
