@@ -250,3 +250,6 @@ Thumbs.db
 
 # Playwright
 .playwright-mcp/
+
+# Project docs (local reference only)
+docs/COMMIT_PLAN.md
