@@ -2,7 +2,7 @@
 # All packages are Apache 2.0, MIT, or BSD licensed
 
 # Web framework
-fastapi==0.115.0
+fastapi==0.162.0
 uvicorn[standard]==0.30.6
 python-multipart==0.0.12
 
@@ -12,20 +12,24 @@ pydantic-settings==2.16.1
 # Database (async SQLAlchemy + PostgreSQL + migrations)
 sqlalchemy[asyncio]==2.0.35
 asyncpg==0.32.0
-alembic==1.13.3
+alembic==1.20.1
 
 # Vector search (pgvector extension)
-pgvector==0.3.3
+pgvector==0.5.1
 
 # Authentication
 passlib[bcrypt]==1.7.4
-python-jose[cryptography]==3.3.0
+python-jose[cryptography]==3.5.0
 
 # HTTP client + GitHub API
 httpx==0.28.1
-gidgethub==5.3.0
+gidgethub==6.0.0
 
 # Task queue (async-native, Apache 2.0)
+# taskiq-redis is the broker client — it speaks the Redis wire protocol.
+# We run Valkey (BSD-3-Clause, Linux Foundation fork of Redis) as the server,
+# not Redis (RSALv2/SSPLv1 — incompatible with Apache 2.0).
+# Valkey is 100% Redis-protocol-compatible, so taskiq-redis connects to it seamlessly.
 taskiq==0.13.0
 taskiq-redis==1.2.4
 
@@ -36,7 +40,7 @@ litellm==1.106.3
 fastembed==0.9.1
 
 # Server-Sent Events
-sse-starlette==2.1.3
+sse-starlette==3.6.0
 
 # Rate limiting
 slowapi==0.1.9
