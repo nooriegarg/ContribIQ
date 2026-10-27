@@ -2,15 +2,17 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from sqlalchemy import text
 
 from backend.core.config import get_settings
+from backend.db.session import AsyncSessionLocal
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Startup: DB engine and cache connections will be initialised here in later commits
+    async with AsyncSessionLocal() as session:
+        await session.execute(text("SELECT 1"))
     yield
-    # Shutdown: clean up connections here in later commits
 
 
 def create_app() -> FastAPI:
