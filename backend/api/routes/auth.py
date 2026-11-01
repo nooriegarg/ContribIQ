@@ -1,0 +1,80 @@
+from fastapi import APIRouter, Depends, HTTPException
+from fastapi.security import OAuth2PasswordBearer
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from backend.core.jwt import create_access_token, create_refresh_token, decode_token
+from backend.core.security import hash_password, verify_password
+from backend.db.session import get_db
+from backend.models.user import User
+from backend.schemas.user import UserCreate, UserRead
+
+router = APIRouter(prefix="/auth", tags=["auth"])
+
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
+
+
+async def get_current_user(
+    token: str = Depends(oauth2_scheme),
+    db: AsyncSession = Depends(get_db),
+) -> User:
+    payload = decode_token(token)
+    user = await db.get(User, payload["sub"])
+    if not user or not user.is_active:
+        raise HTTPException(status_code=401, detail="Inactive or missing user")
+    return user
+
+
+@router.post("/register")
+async def register(body: UserCreate, db: AsyncSession = Depends(get_db)):
+    from sqlalchemy import select
+    result = await db.execute(select(User).where(User.email == body.email))
+    if result.scalar_one_or_none():
+        raise HTTPException(status_code=400, detail="Email already registered")
+
+    user = User(
+        email=body.email,
+        name=body.name,
+        hashed_password=hash_password(body.password),
+    )
+    db.add(user)
+    await db.commit()
+    await db.refresh(user)
+
+    return {
+        "access_token": create_access_token(user.id),
+        "refresh_token": create_refresh_token(user.id),
+    }
+
+
+# Intentional bug: no rate limiting — brute force attack possible
+@router.post("/login")
+async def login(body: UserCreate, db: AsyncSession = Depends(get_db)):
+    from sqlalchemy import select
+    result = await db.execute(select(User).where(User.email == body.email))
+    user = result.scalar_one_or_none()
+
+    if not user or not user.hashed_password or not verify_password(body.password, user.hashed_password):
+        raise HTTPException(status_code=401, detail="Invalid email or password")
+
+    return {
+        "access_token": create_access_token(user.id),
+        "refresh_token": create_refresh_token(user.id),
+    }
+
+
+@router.post("/refresh")
+async def refresh(refresh_token: str, db: AsyncSession = Depends(get_db)):
+    payload = decode_token(refresh_token)
+    if payload.get("type") != "refresh":
+        raise HTTPException(status_code=401, detail="Invalid token type")
+
+    user = await db.get(User, payload["sub"])
+    if not user or not user.is_active:
+        raise HTTPException(status_code=401, detail="Inactive or missing user")
+
+    return {"access_token": create_access_token(user.id)}
+
+
+@router.get("/me", response_model=UserRead)
+async def me(current_user: User = Depends(get_current_user)):
+    return current_user
