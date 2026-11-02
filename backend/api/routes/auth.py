@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.core.jwt import create_access_token, create_refresh_token, decode_token
 from backend.core.security import hash_password, verify_password
+from backend.core.tokens import token_response
 from backend.db.session import get_db
 from backend.models.user import User
 from backend.schemas.user import UserCreate, UserLogin, UserRead
@@ -45,10 +46,10 @@ async def register(body: UserCreate, db: AsyncSession = Depends(get_db)):
     await db.commit()
     await db.refresh(user)
 
-    return {
-        "access_token": create_access_token(user.id),
-        "refresh_token": create_refresh_token(user.id),
-    }
+    return token_response(
+        access_token=create_access_token(user.id),
+        refresh_token=create_refresh_token(user.id),
+    )
 
 @router.post("/login")
 async def login(body: UserLogin, db: AsyncSession = Depends(get_db)):
@@ -59,10 +60,10 @@ async def login(body: UserLogin, db: AsyncSession = Depends(get_db)):
     if not user or not user.is_active or not user.hashed_password or not verify_password(body.password, user.hashed_password):
         raise HTTPException(status_code=401, detail="Invalid email or password")
 
-    return {
-        "access_token": create_access_token(user.id),
-        "refresh_token": create_refresh_token(user.id),
-    }
+    return token_response(
+        access_token=create_access_token(user.id),
+        refresh_token=create_refresh_token(user.id),
+    )
 
 
 class RefreshRequest(BaseModel):
@@ -79,7 +80,7 @@ async def refresh(body: RefreshRequest, db: AsyncSession = Depends(get_db)):
     if not user or not user.is_active:
         raise HTTPException(status_code=401, detail="Inactive or missing user")
 
-    return {"access_token": create_access_token(user.id)}
+    return token_response(access_token=create_access_token(user.id))
 
 
 @router.get("/me", response_model=UserRead)
