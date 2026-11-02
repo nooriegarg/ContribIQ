@@ -6,6 +6,8 @@ from sqlalchemy.engine import Connection
 from sqlalchemy.ext.asyncio import async_engine_from_config
 
 from alembic import context
+
+import backend.models  # noqa: F401  importing the package registers every model on Base.metadata
 from backend.core.config import get_settings
 from backend.db.base import Base
 

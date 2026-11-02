@@ -4,13 +4,9 @@ import GitHubButton from './GitHubButton'
 import { getGitHubOAuthUrl } from '../api/auth'
 import { validateEmail } from '../utils/validation'
 
-interface Props {
-  onSwitchToLogin: () => void
-}
-
 type AlertState = { message: string; variant: 'error' | 'info' | 'success' } | null
 
-export default function SignupForm({ onSwitchToLogin }: Props) {
+export default function SignupForm() {
   const [name, setName]         = useState('')
   const [email, setEmail]       = useState('')
   const [password, setPassword] = useState('')

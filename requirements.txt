@@ -8,6 +8,8 @@ python-multipart==0.0.12
 
 # Configuration
 pydantic-settings==2.16.1
+# Pydantic's EmailStr (backend/schemas/user.py) needs the email-validator extra.
+email-validator==2.3.0
 
 # Database (async SQLAlchemy + PostgreSQL + migrations)
 sqlalchemy[asyncio]==2.0.35
@@ -19,6 +21,7 @@ pgvector==0.5.1
 
 # Authentication
 passlib[bcrypt]==1.7.4
+bcrypt==4.0.1
 python-jose[cryptography]==3.5.0
 
 # HTTP client + GitHub API

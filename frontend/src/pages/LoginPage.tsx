@@ -31,7 +31,7 @@ export default function LoginPage() {
           ) : view === 'login' ? (
             <LoginForm onSuccess={() => setSucceeded(true)} />
           ) : (
-            <SignupForm onSwitchToLogin={() => setView('login')} />
+            <SignupForm />
           )}
 
           {!succeeded && (

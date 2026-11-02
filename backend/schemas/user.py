@@ -19,10 +19,14 @@ class UserRead(BaseModel):
     avatar_url: Optional[str]
     created_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = {"from_attributes": True}
 
 
 class UserUpdate(BaseModel):
     name: Optional[str] = None
     avatar_url: Optional[str] = None
+
+
+class UserLogin(BaseModel):
+    email: EmailStr
+    password: str
