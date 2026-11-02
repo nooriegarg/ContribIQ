@@ -4,11 +4,6 @@ GitHub OAuth2 flow.
 GET  /auth/github/login    → redirect to GitHub authorization page
 GET  /auth/github/callback → exchange code for token, upsert user, return JWTs
 
-Intentional bug: state is generated on login but never stored or checked
-on callback — any state value is accepted. This is a CSRF vulnerability.
-Issue: GitHub OAuth callback doesn't validate state param — CSRF vulnerability
-Fix: store state in Valkey on login (SET oauth:state:{state} 1 EX 300),
-     verify it exists on callback, then delete it.
 """
 
 import secrets
