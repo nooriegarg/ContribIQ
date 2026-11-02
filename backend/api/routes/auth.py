@@ -1,12 +1,15 @@
+import uuid as uuid_module
+
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.security import OAuth2PasswordBearer
+from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.core.jwt import create_access_token, create_refresh_token, decode_token
 from backend.core.security import hash_password, verify_password
 from backend.db.session import get_db
 from backend.models.user import User
-from backend.schemas.user import UserCreate, UserRead
+from backend.schemas.user import UserCreate, UserLogin, UserRead
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -18,7 +21,9 @@ async def get_current_user(
     db: AsyncSession = Depends(get_db),
 ) -> User:
     payload = decode_token(token)
-    user = await db.get(User, payload["sub"])
+    if payload.get("type") != "access":
+        raise HTTPException(status_code=401, detail="Invalid token type")
+    user = await db.get(User, uuid_module.UUID(payload["sub"]))
     if not user or not user.is_active:
         raise HTTPException(status_code=401, detail="Inactive or missing user")
     return user
@@ -48,12 +53,12 @@ async def register(body: UserCreate, db: AsyncSession = Depends(get_db)):
 
 # Intentional bug: no rate limiting — brute force attack possible
 @router.post("/login")
-async def login(body: UserCreate, db: AsyncSession = Depends(get_db)):
+async def login(body: UserLogin, db: AsyncSession = Depends(get_db)):
     from sqlalchemy import select
     result = await db.execute(select(User).where(User.email == body.email))
     user = result.scalar_one_or_none()
 
-    if not user or not user.hashed_password or not verify_password(body.password, user.hashed_password):
+    if not user or not user.is_active or not user.hashed_password or not verify_password(body.password, user.hashed_password):
         raise HTTPException(status_code=401, detail="Invalid email or password")
 
     return {
@@ -62,13 +67,17 @@ async def login(body: UserCreate, db: AsyncSession = Depends(get_db)):
     }
 
 
+class RefreshRequest(BaseModel):
+    refresh_token: str
+
+
 @router.post("/refresh")
-async def refresh(refresh_token: str, db: AsyncSession = Depends(get_db)):
-    payload = decode_token(refresh_token)
+async def refresh(body: RefreshRequest, db: AsyncSession = Depends(get_db)):
+    payload = decode_token(body.refresh_token)
     if payload.get("type") != "refresh":
         raise HTTPException(status_code=401, detail="Invalid token type")
 
-    user = await db.get(User, payload["sub"])
+    user = await db.get(User, uuid_module.UUID(payload["sub"]))
     if not user or not user.is_active:
         raise HTTPException(status_code=401, detail="Inactive or missing user")
 

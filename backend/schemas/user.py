@@ -25,3 +25,8 @@ class UserRead(BaseModel):
 class UserUpdate(BaseModel):
     name: Optional[str] = None
     avatar_url: Optional[str] = None
+
+
+class UserLogin(BaseModel):
+    email: EmailStr
+    password: str
