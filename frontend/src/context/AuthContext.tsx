@@ -25,6 +25,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   })
 
   const login = useCallback((newToken: string, newUser: User, rememberMe: boolean) => {
+    localStorage.removeItem('token')
+    localStorage.removeItem('user')
+    sessionStorage.removeItem('token')
+    sessionStorage.removeItem('user')
     const storage = rememberMe ? localStorage : sessionStorage
     storage.setItem('token', newToken)
     storage.setItem('user', JSON.stringify(newUser))
