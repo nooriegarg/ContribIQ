@@ -2,11 +2,12 @@
 GitHub OAuth2 flow.
 
 GET  /auth/github/login    → redirect to GitHub authorization page
-GET  /auth/github/callback → exchange code for token, upsert user, return JWTs
-
+GET  /auth/github/callback → exchange code for token, upsert user, redirect to frontend
 """
 
+import asyncio
 import secrets
+from urllib.parse import urlencode
 
 import httpx
 from fastapi import APIRouter, Depends, HTTPException
@@ -16,9 +17,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.core.config import get_settings
 from backend.core.jwt import create_access_token, create_refresh_token
-from backend.core.tokens import token_response
 from backend.db.session import get_db
 from backend.models.user import User
+from backend.services.valkey_client import delete_key, key_exists, set_key
 
 router = APIRouter(prefix="/auth", tags=["oauth"])
 
@@ -27,24 +28,23 @@ GITHUB_TOKEN_URL = "https://github.com/login/oauth/access_token"
 GITHUB_USER_URL = "https://api.github.com/user"
 GITHUB_EMAILS_URL = "https://api.github.com/user/emails"
 
+_TIMEOUT = httpx.Timeout(10.0, connect=5.0)
+
 
 @router.get("/github/login")
 async def github_login():
     """Redirect the user to GitHub to authorize the app."""
     settings = get_settings()
     state = secrets.token_urlsafe(32)
+    await set_key(f"oauth:state:{state}", "1", ttl=300)
 
-    # BUG: state is generated but never stored — callback accepts any state value
-    # Fix would be: await set_key(f"oauth:state:{state}", "1", ttl=300)
-
-    params = {
+    params = urlencode({
         "client_id": settings.GITHUB_CLIENT_ID,
         "redirect_uri": f"{settings.BACKEND_URL}/auth/github/callback",
         "scope": "read:user user:email",
         "state": state,
-    }
-    query = "&".join(f"{k}={v}" for k, v in params.items())
-    return RedirectResponse(url=f"{GITHUB_AUTHORIZE_URL}?{query}")
+    })
+    return RedirectResponse(url=f"{GITHUB_AUTHORIZE_URL}?{params}")
 
 
 @router.get("/github/callback")
@@ -55,49 +55,65 @@ async def github_callback(
 ):
     """
     GitHub redirects here after user authorizes.
-    Exchange the code for a GitHub access token, fetch user info,
-    upsert into our DB, return JWTs.
+    Validate CSRF state, exchange code, upsert user, redirect to frontend with JWTs.
     """
     settings = get_settings()
 
-    # BUG: state is never validated here — should check Valkey for oauth:state:{state}
-    # and raise 400 if not found, then delete the key after validating
+    if not await key_exists(f"oauth:state:{state}"):
+        raise HTTPException(status_code=400, detail="Invalid or expired OAuth state")
+    await delete_key(f"oauth:state:{state}")
 
-    # step 1 — exchange code for GitHub access token
-    async with httpx.AsyncClient() as client:
-        token_resp = await client.post(
-            GITHUB_TOKEN_URL,
-            headers={"Accept": "application/json"},
-            data={
-                "client_id": settings.GITHUB_CLIENT_ID,
-                "client_secret": settings.GITHUB_CLIENT_SECRET,
-                "code": code,
-                "redirect_uri": f"{settings.BACKEND_URL}/auth/github/callback",
-            },
-        )
+    # exchange code for GitHub access token
+    try:
+        async with httpx.AsyncClient(timeout=_TIMEOUT) as client:
+            token_resp = await client.post(
+                GITHUB_TOKEN_URL,
+                headers={"Accept": "application/json"},
+                data={
+                    "client_id": settings.GITHUB_CLIENT_ID,
+                    "client_secret": settings.GITHUB_CLIENT_SECRET,
+                    "code": code,
+                    "redirect_uri": f"{settings.BACKEND_URL}/auth/github/callback",
+                },
+            )
+            token_resp.raise_for_status()
+    except httpx.TimeoutException:
+        raise HTTPException(status_code=504, detail="GitHub token exchange timed out")
+    except httpx.HTTPStatusError:
+        raise HTTPException(status_code=502, detail="GitHub token exchange returned an error")
+    except httpx.HTTPError:
+        raise HTTPException(status_code=502, detail="GitHub token exchange failed")
 
     token_data = token_resp.json()
     github_token = token_data.get("access_token")
     if not github_token:
         raise HTTPException(status_code=400, detail="GitHub did not return an access token")
 
-    # step 2 — fetch GitHub user profile and emails
+    # fetch GitHub user profile and emails in parallel
     gh_headers = {
         "Authorization": f"Bearer {github_token}",
         "Accept": "application/vnd.github+json",
     }
-    async with httpx.AsyncClient() as client:
-        user_resp = await client.get(GITHUB_USER_URL, headers=gh_headers)
-        emails_resp = await client.get(GITHUB_EMAILS_URL, headers=gh_headers)
+    try:
+        async with httpx.AsyncClient(timeout=_TIMEOUT) as client:
+            user_task = client.get(GITHUB_USER_URL, headers=gh_headers)
+            emails_task = client.get(GITHUB_EMAILS_URL, headers=gh_headers)
+            user_resp, emails_resp = await asyncio.gather(user_task, emails_task)
+    except httpx.TimeoutException:
+        raise HTTPException(status_code=504, detail="GitHub API request timed out")
+    except httpx.HTTPError:
+        raise HTTPException(status_code=502, detail="Failed to reach GitHub API")
 
     if user_resp.status_code != 200:
         raise HTTPException(status_code=502, detail="Failed to fetch GitHub user profile")
+    if emails_resp.status_code != 200:
+        raise HTTPException(status_code=502, detail="Failed to fetch GitHub user emails")
 
     gh_user = user_resp.json()
-    gh_emails = emails_resp.json() if emails_resp.status_code == 200 else []
+    gh_emails = emails_resp.json()
 
-    # pick primary verified email, fall back to public email on profile
-    primary_email = gh_user.get("email")
+    # only accept an email GitHub explicitly marks as primary AND verified
+    primary_email: str | None = None
     for entry in gh_emails:
         if entry.get("primary") and entry.get("verified"):
             primary_email = entry["email"]
@@ -106,44 +122,50 @@ async def github_callback(
     if not primary_email:
         raise HTTPException(
             status_code=400,
-            detail="No verified email on your GitHub account. Please add one and try again.",
+            detail="No verified primary email on your GitHub account. Please verify an email and try again.",
         )
 
     github_id = str(gh_user["id"])
 
-    # step 3 — upsert user
+    # upsert: look up by GitHub ID first, then by email
     result = await db.execute(select(User).where(User.github_id == github_id))
     user = result.scalar_one_or_none()
 
     if user is None:
-        # check if a password-based account already exists with this email
         result = await db.execute(select(User).where(User.email == primary_email))
-        user = result.scalar_one_or_none()
+        existing = result.scalar_one_or_none()
 
-    if user is None:
-        # brand new user
-        user = User(
-            email=primary_email,
-            github_id=github_id,
-            github_username=gh_user.get("login"),
-            avatar_url=gh_user.get("avatar_url"),
-            name=gh_user.get("name"),
-        )
-        db.add(user)
-    else:
-        # returning user — update GitHub fields
-        user.github_id = github_id
-        user.github_username = gh_user.get("login")
-        user.avatar_url = gh_user.get("avatar_url")
-        if not user.name and gh_user.get("name"):
-            user.name = gh_user.get("name")
+        if existing is not None:
+            if existing.github_id is not None:
+                # email is already claimed by a different GitHub account
+                raise HTTPException(
+                    status_code=409,
+                    detail="This email is already linked to a different GitHub account.",
+                )
+            # password-based account with matching email — link GitHub to it
+            user = existing
+        else:
+            user = User(
+                email=primary_email,
+                github_id=github_id,
+                github_username=gh_user.get("login"),
+                avatar_url=gh_user.get("avatar_url"),
+                name=gh_user.get("name"),
+            )
+            db.add(user)
+
+    # refresh GitHub fields on every login
+    user.github_id = github_id
+    user.github_username = gh_user.get("login")
+    user.avatar_url = gh_user.get("avatar_url")
+    if not user.name and gh_user.get("name"):
+        user.name = gh_user.get("name")
 
     await db.commit()
     await db.refresh(user)
 
-    # step 4 — return JWTs
-    # in a real app we'd redirect to frontend with tokens in query params or a cookie
-    return token_response(
-        access_token=create_access_token(user.id),
-        refresh_token=create_refresh_token(user.id),
-    )
+    # redirect to frontend SPA — tokens in query params, frontend stores them
+    access_token = create_access_token(user.id)
+    refresh_token = create_refresh_token(user.id)
+    qs = urlencode({"access_token": access_token, "refresh_token": refresh_token})
+    return RedirectResponse(url=f"{settings.FRONTEND_URL}/auth/callback?{qs}")
