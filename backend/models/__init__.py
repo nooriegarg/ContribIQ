@@ -7,5 +7,6 @@ dropping every table.
 """
 
 from backend.models.user import User
+from backend.models.profile import ContributorProfile
 
-__all__ = ["User"]
+__all__ = ["User", "ContributorProfile"]

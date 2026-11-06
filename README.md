@@ -1,2 +1,214 @@
 # ContribIQ
-ContribIQ is an open source tool that analyzes any GitHub repository from a contributor's perspective — project health, maintainer responsiveness, good first issues, license compatibility, and a personal PR tracking dashboard. Built by contributors, for contributors.
+
+An AI-powered open-source contributor onboarding assistant. Point it at any GitHub repository and it analyses the codebase, generates a personalised onboarding path, scores open issues against your skill profile, and answers plain-language questions about the code — all running locally via Ollama.
+
+**License:** Apache 2.0 &nbsp;|&nbsp; **Stack:** FastAPI · React 18 · PostgreSQL · Valkey · TaskIQ · LiteLLM · Ollama · pgvector
+
+---
+
+## Table of Contents
+
+- [Local Setup](#local-setup)
+- [Feature Areas](#feature-areas)
+- [Contributing](#contributing)
+- [Tech Stack Details](#tech-stack-details)
+
+---
+
+## Local Setup
+
+### Prerequisites
+
+- Python 3.12+
+- Node.js 20+
+- PostgreSQL 16 with the [pgvector](https://github.com/pgvector/pgvector) extension
+- [Valkey](https://valkey.io) 8+ (or any Redis-protocol-compatible server)
+- [Ollama](https://ollama.com) with `qwen2.5-coder:7b` pulled
+
+### Backend
+
+```bash
+python -m venv .venv && source .venv/bin/activate
+pip install -r requirements.txt
+cp .env.example .env          # fill in your values
+alembic upgrade head
+uvicorn backend.main:app --reload
+# → http://localhost:8000/health  {"status":"ok"}
+# → http://localhost:8000/docs    Swagger UI
+```
+
+### Frontend
+
+```bash
+cd frontend
+npm install
+cp .env.example .env.local    # set VITE_API_URL=http://localhost:8000
+npm run dev
+# → http://localhost:5173
+```
+
+---
+
+## Feature Areas
+
+The table below maps each user-facing feature to its implementation status and the relevant files. Features marked **Not started** are good areas to pick up as a first contribution.
+
+### Authentication & User Management
+
+| Sub-feature | Status | Key files |
+|---|---|---|
+| Login / signup UI | Done | `frontend/src/pages/LoginPage.tsx`, `frontend/src/components/LoginForm.tsx`, `frontend/src/components/SignupForm.tsx` |
+| Email register & login endpoints | Done | `backend/api/routes/auth.py` |
+| JWT access + refresh tokens | Done | `backend/core/jwt.py`, `backend/core/security.py` |
+| Auth state (React context) | Done | `frontend/src/context/AuthContext.tsx` |
+| Base API client (fetch wrapper) | Done | `frontend/src/api/client.ts` |
+
+---
+
+### GitHub OAuth
+
+| Sub-feature | Status | Key files |
+|---|---|---|
+| OAuth login redirect | Done | `backend/api/routes/oauth.py` |
+| OAuth callback + user upsert | Done | `backend/api/routes/oauth.py` |
+| CSRF state validation (Valkey) | Done | `backend/services/valkey_client.py` |
+| Frontend callback handler | **Not started** | Needs `frontend/src/pages/AuthCallback.tsx` and a `/auth/callback` route in `App.tsx` to read `?access_token=` from the URL and store it |
+
+---
+
+### Contributor Profile
+
+| Sub-feature | Status | Key files |
+|---|---|---|
+| Profile model + migration | Done | `backend/models/profile.py`, `alembic/versions/0005_create_contributor_profiles.py` |
+| `GET /users/me/profile` | Done | `backend/api/routes/profile.py` |
+| `PUT /users/me/profile` | Done | `backend/api/routes/profile.py` |
+| Profile React screen | **Not started** | Needs `frontend/src/pages/ProfilePage.tsx` — language chip multi-select, experience radio, wired to `PUT /users/me/profile` |
+
+---
+
+### Repository Analysis Engine
+
+This is the core async pipeline. It runs as a background TaskIQ worker so the HTTP request returns immediately, with progress streamed to the frontend over SSE.
+
+| Sub-feature | Status | Key files |
+|---|---|---|
+| GitHub API client (REST + GraphQL) | Done | `backend/services/github_client.py` |
+| Repository model + metadata fetching | **Not started** | Needs `backend/models/repository.py`, `backend/services/repo_service.py`, `alembic/versions/0006_create_repositories.py` |
+| TaskIQ + Valkey task queue | **Not started** | Needs `backend/worker/broker.py`, `backend/worker/tasks/__init__.py`, `docker-compose.yml` |
+| Analysis pipeline tasks (file tree → tech stack → directories) | **Not started** | Needs `backend/worker/tasks/analyze_repo.py`, `backend/services/tech_stack_service.py` |
+| SSE progress endpoint | **Not started** | Needs `backend/api/routes/analyze.py` (`POST /analyze`, `GET /analyze/{job_id}/progress`), `frontend/src/api/analyze.ts`, `frontend/src/hooks/useAnalysis.ts` |
+| Analysis result caching (Valkey, 24 h TTL) | **Not started** | Needs `backend/services/cache_service.py` — cache key is `analysis:{owner}:{repo}:{sha}` |
+
+---
+
+### Repository Overview Screen
+
+| Sub-feature | Status | Key files |
+|---|---|---|
+| Overview page (React) | **Not started** | Needs `frontend/src/pages/OverviewPage.tsx`, `frontend/src/components/RepoBanner.tsx`, `frontend/src/components/TechStack.tsx`, `frontend/src/components/DirectoryMap.tsx`, `frontend/src/components/RepoStats.tsx` |
+| AI-generated architecture diagram (Mermaid via LiteLLM + Ollama) | **Not started** | Needs `backend/services/ai_service.py`, `backend/worker/tasks/generate_diagram.py`, `frontend/src/components/ArchDiagram.tsx` |
+
+---
+
+### Onboarding Path
+
+Personalised "first 30 minutes" plan generated by the LLM from the repo's README, file tree, and tech stack — setup commands, key files to read, and a preview of the first issue to attempt.
+
+| Sub-feature | Status | Key files |
+|---|---|---|
+| Onboarding plan generation (LLM task) | **Not started** | Needs `backend/schemas/onboarding.py`, `backend/worker/tasks/generate_onboarding.py` |
+| Onboarding path React screen | **Not started** | Needs `frontend/src/pages/OnboardingPage.tsx`, `frontend/src/components/Timeline.tsx`, `frontend/src/components/CodeBlock.tsx`, `frontend/src/components/FileReadList.tsx`, `frontend/src/components/IssuePreviewCard.tsx` |
+
+---
+
+### Issue Recommendations
+
+Open issues fetched from GitHub, scored for beginner-friendliness, then ranked against the contributor's skill profile by the LLM.
+
+| Sub-feature | Status | Key files |
+|---|---|---|
+| Issue model + difficulty scoring | **Not started** | Needs `backend/models/issue.py`, `backend/services/issues_service.py`, `backend/worker/tasks/score_issues.py`, `alembic/versions/0007_create_issues.py`. Difficulty is a 1–5 average across files affected, cyclomatic complexity (radon), dependency count (tree-sitter), domain keywords, and estimated line changes |
+| AI issue matching (LLM ranks issues against profile) | **Not started** | Needs `backend/schemas/match.py`, `backend/services/matching_service.py`. Match score 0–100 with 3 plain-language reasons per issue |
+| Issue recommendations React screen | **Not started** | Needs `frontend/src/pages/IssuesPage.tsx`, `frontend/src/components/MatchRing.tsx`, `frontend/src/components/IssueCard.tsx`, `frontend/src/components/DifficultyDots.tsx` |
+
+---
+
+### Issue Deep-Dive
+
+Selecting an issue triggers a deeper analysis: plain-language AI explanation, which files to change, prerequisites to understand first, impact chain, similar merged PRs (pgvector similarity), and a step-by-step contribution checklist.
+
+| Sub-feature | Status | Key files |
+|---|---|---|
+| pgvector + fastembed embedding pipeline | **Not started** | Needs `backend/db/vector.py`, `backend/models/code_chunk.py`, `backend/services/embedding_service.py`, `backend/worker/tasks/embed_repo.py`, `alembic/versions/0008_add_pgvector_code_chunks.py`. Chunking: 50-line sliding window with 10-line overlap, `nomic-embed-code` model (768 dims) |
+| Issue deep-dive backend | **Not started** | Needs `backend/services/issue_detail_service.py`, `backend/api/routes/issues.py` (`GET /issues/{issue_number}/detail`). Similar PRs fetched via pgvector cosine similarity |
+| Issue deep-dive React screen | **Not started** | Needs `frontend/src/pages/IssueDetailPage.tsx`, `frontend/src/components/Checklist.tsx`, `frontend/src/components/ReadinessScore.tsx`, `frontend/src/components/SimilarPRs.tsx`, `frontend/src/components/ImpactChain.tsx` |
+
+---
+
+### "Explain This Codebase" Q&A
+
+RAG-powered chat. The contributor asks a plain-language question; pgvector finds the most relevant code chunks; the LLM answers grounded in the actual source.
+
+| Sub-feature | Status | Key files |
+|---|---|---|
+| Q&A backend (RAG pipeline) | **Not started** | Needs `backend/services/qa_service.py`, `backend/api/routes/qa.py` (`POST /qa/ask`). Pipeline: embed question → top-10 chunks by cosine similarity → assemble prompt with token budget → LiteLLM answer |
+| Q&A panel (React) | **Not started** | Needs `frontend/src/components/QAPanel.tsx` |
+
+---
+
+### Contributor Readiness Score
+
+Multi-dimension score (0–100%) showing how prepared the contributor is to attempt a specific issue, based on onboarding progress, environment setup, Q&A engagement, and issue understanding.
+
+| Sub-feature | Status | Key files |
+|---|---|---|
+| Readiness score calculation | **Not started** | Needs `backend/services/readiness_service.py`. Five dimensions: Repository Understanding (25%), Environment Setup (20%), Code Understanding (25%), Testing Knowledge (15%), Issue Understanding (15%) |
+
+---
+
+### Docker & Deployment
+
+| Sub-feature | Status | Key files |
+|---|---|---|
+| Full Docker Compose stack | **Not started** | Needs `docker-compose.yml` with 6 services: `db` (pgvector/pgvector:pg16), `valkey` (valkey/valkey:8-alpine), `ollama`, `api`, `worker`, `frontend` — all with health checks |
+| Backend Dockerfile | **Not started** | Needs `backend/Dockerfile` — multi-stage build |
+| Frontend Dockerfile | **Not started** | Needs `frontend/Dockerfile` — Vite build + nginx serve |
+| Makefile | **Not started** | `make dev`, `make migrate`, `make pull-model`, `make logs-api` |
+
+---
+
+## Contributing
+
+All of the **Not started** areas in the table above are open for contribution. Each maps to one or more commits in `docs/COMMIT_PLAN.md`, which has full spec: exact files to create, endpoint shapes, model columns, and a known bug to raise as a GitHub issue after implementing.
+
+**Suggested first contributions (smallest scope):**
+
+1. **Frontend OAuth callback handler** — one new page, no backend work needed
+2. **Profile React screen** — one page + two reusable components, endpoint already live
+3. **Number formatting utility** (`formatCount`) — pure function, no dependencies
+4. **Repository model + metadata service** — standard SQLAlchemy + Alembic, follows the User model pattern
+
+**Before opening a PR:**
+
+- Run `alembic upgrade head` after any model change
+- Keep each PR to the scope of one commit from the plan
+- The plan intentionally includes one known bug per commit — raise it as a GitHub issue after your PR merges
+
+---
+
+## Tech Stack Details
+
+| Layer | Technology | Why |
+|---|---|---|
+| Backend framework | FastAPI | Async-native, automatic OpenAPI docs |
+| Database | PostgreSQL 16 + pgvector | SQL + vector similarity in one place |
+| ORM / migrations | SQLAlchemy (async) + Alembic | Typed models, version-controlled schema |
+| Cache / task broker | Valkey 8 | BSD-3-Clause Redis-compatible fork; `taskiq-redis` client connects to it over the Redis wire protocol |
+| Task queue | TaskIQ | Async-native, no Celery overhead |
+| LLM interface | LiteLLM | Single API for Ollama, Anthropic, OpenAI — swap via env var |
+| Local LLM | Ollama + Qwen2.5-Coder 7B | Runs entirely on-device; no data leaves the machine |
+| Embeddings | fastembed (`nomic-embed-code`) | CPU-only, code-optimised, 768 dims |
+| Frontend | React 18 + TypeScript + Vite | Fast HMR, strict types |
+| Auth | JWT (python-jose) + bcrypt (passlib) | Stateless access tokens, 7-day refresh tokens |
+| GitHub auth | OAuth2 + CSRF state (Valkey) | Standard flow, state stored server-side |
