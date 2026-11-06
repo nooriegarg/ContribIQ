@@ -180,7 +180,7 @@ Multi-dimension score (0–100%) showing how prepared the contributor is to atte
 
 ## Contributing
 
-All of the **Not started** areas in the table above are open for contribution. Each maps to one or more commits in `docs/COMMIT_PLAN.md`, which has full spec: exact files to create, endpoint shapes, model columns, and a known bug to raise as a GitHub issue after implementing.
+All of the **Not started** areas in the table above are open for contribution. Each entry lists the exact files to create, the endpoint or component shape, and any model columns needed — everything required to implement it independently.
 
 **Suggested first contributions (smallest scope):**
 
@@ -192,8 +192,8 @@ All of the **Not started** areas in the table above are open for contribution. E
 **Before opening a PR:**
 
 - Run `alembic upgrade head` after any model change
-- Keep each PR to the scope of one commit from the plan
-- The plan intentionally includes one known bug per commit — raise it as a GitHub issue after your PR merges
+- Keep each PR focused on a single feature area from the table above
+- Open a GitHub issue before starting work on a **Not started** item so others know it is being worked on
 
 ---
 
