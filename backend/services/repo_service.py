@@ -1,13 +1,3 @@
-"""
-Repository metadata fetching and persistence service.
-
-Intentional bug: gidgethub.BadRequest (raised when GitHub returns 404 for a private
-or non-existent repo) is not caught here. The exception propagates through the route
-handler and FastAPI returns 500 Internal Server Error to the caller.
-Issue to raise: "Private/missing repo causes unhandled 500 — should return friendly 404 message"
-Fix: Catch gidgethub.BadRequest and raise HTTPException(404, "Repository not found or is private").
-"""
-
 import logging
 from datetime import datetime, timezone
 
