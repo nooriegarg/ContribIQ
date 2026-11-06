@@ -71,9 +71,8 @@ export async function registerWithEmail(payload: {
   }
 }
 
-export async function requestPasswordReset(email: string): Promise<void> {
-  // TODO: implement password reset endpoint in backend (not yet available)
-  console.log('Password reset requested for', email)
+export async function requestPasswordReset(_email: string): Promise<void> {
+  throw new Error('Password reset is currently unavailable.')
 }
 
 export function getGitHubOAuthUrl(): string {
