@@ -72,6 +72,7 @@ export async function registerWithEmail(payload: {
 }
 
 export async function requestPasswordReset(_email: string): Promise<void> {
+  void _email
   throw new Error('Password reset is currently unavailable.')
 }
 
