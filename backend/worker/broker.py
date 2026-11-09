@@ -1,4 +1,4 @@
-from taskiq_valkey import ListQueueBroker
+from taskiq_redis import ListQueueBroker
 
 from backend.core.config import get_settings
 

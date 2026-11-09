@@ -19,6 +19,7 @@ from taskiq_redis import ListQueueBroker
 
 from backend.core.config import get_settings
 from backend.services.github_client import GitHubClient
+from backend.services.tech_stack_service import detect_tech_stack, map_directories
 
 logger = logging.getLogger(__name__)
 
@@ -51,6 +52,17 @@ async def analyze_repository(owner: str, repo_name: str, github_token: str | Non
             _emit("file_tree", "done", {"file_count": len(tree)})
         except Exception as exc:
             _emit("file_tree", "error", {"error": str(exc)})
+            tree = []
+
+        _emit("tech_stack", "started")
+        try:
+            tech_stack = detect_tech_stack(tree)
+            directory_map = map_directories(tree)
+            _emit("tech_stack", "done", {"detected": tech_stack})
+        except Exception as exc:
+            _emit("tech_stack", "error", {"error": str(exc)})
+            tech_stack = []
+            directory_map = []
 
         _emit("issues", "started")
         try:
@@ -78,6 +90,10 @@ async def analyze_repository(owner: str, repo_name: str, github_token: str | Non
             "open_issues": repo_data.get("open_issues_count", 0),
             "language": repo_data.get("language"),
             "topics": repo_data.get("topics", []),
+            "description": repo_data.get("description"),
+            "full_name": repo_data.get("full_name"),
         },
+        "tech_stack": tech_stack,
+        "directory_map": directory_map,
         "steps": steps,
     }

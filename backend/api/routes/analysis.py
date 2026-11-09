@@ -28,6 +28,7 @@ from taskiq.result import TaskiqResult
 from backend.api.routes.auth import get_current_user
 from backend.models.user import User
 from backend.worker.tasks.analyze import analyze_repository
+from backend.worker.tasks.generate_diagram import generate_diagram
 
 logger = logging.getLogger(__name__)
 
@@ -95,6 +96,66 @@ async def stream_analysis(
         yield _sse("timeout", {"error": "Analysis timed out"})
 
     return StreamingResponse(event_generator(), media_type="text/event-stream")
+
+
+@router.get("/result/{task_id}")
+async def get_analysis_result(
+    task_id: str,
+    current_user: User = Depends(get_current_user),
+):
+    try:
+        result: TaskiqResult = await analyze_repository.get_result(task_id=task_id)
+    except Exception:
+        raise HTTPException(status_code=404, detail="Task not found or result expired")
+
+    if result is None:
+        raise HTTPException(status_code=202, detail="Analysis still in progress")
+
+    if result.is_err:
+        raise HTTPException(status_code=500, detail="Analysis task failed")
+
+    return result.return_value
+
+
+@router.post("/{task_id}/diagram")
+async def start_diagram(
+    task_id: str,
+    current_user: User = Depends(get_current_user),
+):
+    try:
+        result: TaskiqResult = await analyze_repository.get_result(task_id=task_id)
+    except Exception:
+        raise HTTPException(status_code=404, detail="Analysis task not found")
+
+    if result is None or result.is_err:
+        raise HTTPException(status_code=400, detail="Analysis not complete")
+
+    data = result.return_value or {}
+    task = await generate_diagram.kiq(
+        repo_name=data.get("repo", ""),
+        description=data.get("metadata", {}).get("description"),
+        tech_stack=data.get("tech_stack", []),
+    )
+    return {"diagram_task_id": task.task_id}
+
+
+@router.get("/diagram/{diagram_task_id}")
+async def get_diagram(
+    diagram_task_id: str,
+    current_user: User = Depends(get_current_user),
+):
+    try:
+        result: TaskiqResult = await generate_diagram.get_result(task_id=diagram_task_id)
+    except Exception:
+        raise HTTPException(status_code=404, detail="Diagram task not found")
+
+    if result is None:
+        return {"status": "pending", "mermaid_syntax": None}
+
+    if result.is_err:
+        raise HTTPException(status_code=500, detail="Diagram generation failed")
+
+    return result.return_value
 
 
 def _sse(event: str, data: dict) -> str:

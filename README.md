@@ -94,10 +94,10 @@ This is the core async pipeline. It runs as a background TaskIQ worker so the HT
 | Sub-feature | Status | Key files |
 |---|---|---|
 | GitHub API client (REST + GraphQL) | Done | `backend/services/github_client.py` |
-| Repository model + metadata fetching | **Not started** | Needs `backend/models/repository.py`, `backend/services/repo_service.py`, `alembic/versions/0006_create_repositories.py` |
-| TaskIQ + Valkey task queue | **Not started** | Needs `backend/worker/broker.py`, `backend/worker/tasks/__init__.py`, `docker-compose.yml` |
-| Analysis pipeline tasks (file tree → tech stack → directories) | **Not started** | Needs `backend/worker/tasks/analyze_repo.py`, `backend/services/tech_stack_service.py` |
-| SSE progress endpoint | **Not started** | Needs `backend/api/routes/analyze.py` (`POST /analyze`, `GET /analyze/{job_id}/progress`), `frontend/src/api/analyze.ts`, `frontend/src/hooks/useAnalysis.ts` |
+| Repository model + metadata fetching | Done | `backend/models/repository.py`, `backend/services/repo_service.py`, `alembic/versions/0006_create_repositories.py` |
+| TaskIQ + Valkey task queue | Done | `backend/worker/broker.py`, `backend/worker/tasks/__init__.py`, `docker-compose.yml` |
+| Analysis pipeline tasks (file tree → tech stack → directories) | Done | `backend/worker/tasks/analyze.py`, `backend/services/tech_stack_service.py` |
+| SSE progress endpoint | Done | `backend/api/routes/analysis.py` (`POST /analysis/start`, `GET /analysis/stream/{task_id}`, `GET /analysis/result/{task_id}`), `frontend/src/api/analyze.ts`, `frontend/src/hooks/useAnalysis.ts` |
 | Analysis result caching (Valkey, 24 h TTL) | **Not started** | Needs `backend/services/cache_service.py` — cache key is `analysis:{owner}:{repo}:{sha}` |
 
 ---
@@ -106,8 +106,8 @@ This is the core async pipeline. It runs as a background TaskIQ worker so the HT
 
 | Sub-feature | Status | Key files |
 |---|---|---|
-| Overview page (React) | **Not started** | Needs `frontend/src/pages/OverviewPage.tsx`, `frontend/src/components/RepoBanner.tsx`, `frontend/src/components/TechStack.tsx`, `frontend/src/components/DirectoryMap.tsx`, `frontend/src/components/RepoStats.tsx` |
-| AI-generated architecture diagram (Mermaid via LiteLLM + Ollama) | **Not started** | Needs `backend/services/ai_service.py`, `backend/worker/tasks/generate_diagram.py`, `frontend/src/components/ArchDiagram.tsx` |
+| Overview page (React) | Done | `frontend/src/pages/OverviewPage.tsx`, `frontend/src/components/RepoBanner.tsx`, `frontend/src/components/TechStack.tsx`, `frontend/src/components/DirectoryMap.tsx`, `frontend/src/components/RepoStats.tsx`, `frontend/src/utils/format.ts` |
+| AI-generated architecture diagram (Mermaid via LiteLLM + Ollama) | Done | `backend/services/ai_service.py`, `backend/worker/tasks/generate_diagram.py`, `frontend/src/components/ArchDiagram.tsx` |
 
 ---
 
