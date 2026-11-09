@@ -1,4 +1,4 @@
-import { useAuth } from '../context/AuthContext'
+import { useAuth } from '../context/useAuth'
 import BrandLogo from '../components/BrandLogo'
 
 export default function DashboardPage() {
