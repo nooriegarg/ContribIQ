@@ -9,6 +9,7 @@ class Settings(BaseSettings):
 
     # Security
     SECRET_KEY: str
+    LOGIN_RATE_LIMIT: str = "5/minute"
 
     # GitHub OAuth
     GITHUB_CLIENT_ID: str

@@ -1,11 +1,13 @@
 import uuid as uuid_module
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.security import OAuth2PasswordBearer
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from backend.core.config import get_settings
 from backend.core.jwt import create_access_token, create_refresh_token, decode_token
+from backend.core.rate_limit import limiter
 from backend.core.security import hash_password, verify_password
 from backend.core.tokens import token_response
 from backend.db.session import get_db
@@ -52,7 +54,8 @@ async def register(body: UserCreate, db: AsyncSession = Depends(get_db)):
     )
 
 @router.post("/login")
-async def login(body: UserLogin, db: AsyncSession = Depends(get_db)):
+@limiter.limit(lambda: get_settings().LOGIN_RATE_LIMIT)
+async def login(request: Request, body: UserLogin, db: AsyncSession = Depends(get_db)):
     from sqlalchemy import select
     result = await db.execute(select(User).where(User.email == body.email))
     user = result.scalar_one_or_none()
