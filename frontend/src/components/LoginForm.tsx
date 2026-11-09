@@ -2,7 +2,7 @@ import { useState } from 'react'
 import Alert from './Alert'
 import GitHubButton from './GitHubButton'
 import { loginWithEmail, requestPasswordReset, getGitHubOAuthUrl } from '../api/auth'
-import { useAuth } from '../context/AuthContext'
+import { useAuth } from '../context/useAuth'
 import { validateEmail } from '../utils/validation'
 
 interface Props {
