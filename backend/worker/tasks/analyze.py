@@ -32,12 +32,7 @@ async def analyze_repository(owner: str, repo_name: str, github_token: str | Non
             _emit("metadata", "error", {"error": str(exc)})
             return {"owner": owner, "repo": repo_name, "status": "failed", "steps": steps}
 
-        latest_sha = repo_data.get("default_branch", "")
-        try:
-            branches = await client.get_repo(owner, repo_name)
-            latest_sha = branches.get("pushed_at", "")[:10].replace("-", "")
-        except Exception:
-            pass
+        latest_sha = repo_data.get("pushed_at", "")[:10].replace("-", "")
 
         cached = await get_cached_analysis(owner, repo_name, latest_sha)
         if cached is not None:
