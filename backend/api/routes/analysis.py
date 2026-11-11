@@ -1,21 +1,3 @@
-"""
-SSE endpoint for streaming repository analysis progress.
-
-Clients POST to /analysis/start to kick off the task, then GET
-/analysis/stream/{task_id} to receive progress events as SSE.
-
-Intentional bug: the stream endpoint polls the task result on a fixed
-1-second interval. If the task finishes between polls the "done" event
-can be delivered up to 1 second late. More importantly, intermediate
-progress steps stored in the result list are only visible after the task
-completes — so the client sees no progress until the very end, then gets
-all steps at once.
-
-Issue to raise: "SSE progress stream delivers all events at once on
-completion instead of incrementally"
-Fix: use Valkey pub/sub to push each step event as it is emitted.
-"""
-
 import asyncio
 import json
 import logging
@@ -27,6 +9,7 @@ from taskiq.result import TaskiqResult
 
 from backend.api.routes.auth import get_current_user
 from backend.models.user import User
+from backend.services.onboarding_service import generate_onboarding_plan
 from backend.worker.tasks.analyze import analyze_repository
 from backend.worker.tasks.generate_diagram import generate_diagram
 
@@ -156,6 +139,26 @@ async def get_diagram(
         raise HTTPException(status_code=500, detail="Diagram generation failed")
 
     return result.return_value
+
+
+@router.get("/result/{task_id}/onboarding")
+async def get_onboarding_plan(
+    task_id: str,
+    current_user: User = Depends(get_current_user),
+):
+    try:
+        result: TaskiqResult = await analyze_repository.get_result(task_id=task_id)
+    except Exception:
+        raise HTTPException(status_code=404, detail="Analysis task not found")
+
+    if result is None:
+        raise HTTPException(status_code=202, detail="Analysis still in progress")
+
+    if result.is_err:
+        raise HTTPException(status_code=500, detail="Analysis task failed")
+
+    plan = await generate_onboarding_plan(result.return_value or {})
+    return plan
 
 
 def _sse(event: str, data: dict) -> str:
