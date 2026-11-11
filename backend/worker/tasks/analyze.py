@@ -1,23 +1,10 @@
-"""
-Analysis pipeline task.
-
-Intentional bug: progress events are pushed to a plain in-memory list on the
-broker result, not to a Valkey pub/sub channel. This means the SSE endpoint
-polls the result key on a fixed interval instead of receiving push events —
-so the client always sees progress ~1-2 seconds late and the final "done"
-event can be missed if the poll window is too wide.
-
-Issue to raise: "Analysis progress events use polling instead of pub/sub —
-final 'done' event is occasionally missed"
-Fix: publish each event to a Valkey channel and subscribe in the SSE handler.
-"""
-
 import logging
 from typing import Any
 
 from taskiq_redis import ListQueueBroker
 
 from backend.core.config import get_settings
+from backend.services.cache_service import get_cached_analysis, set_cached_analysis
 from backend.services.github_client import GitHubClient
 from backend.services.tech_stack_service import detect_tech_stack, map_directories
 
@@ -45,6 +32,18 @@ async def analyze_repository(owner: str, repo_name: str, github_token: str | Non
             _emit("metadata", "error", {"error": str(exc)})
             return {"owner": owner, "repo": repo_name, "status": "failed", "steps": steps}
 
+        latest_sha = repo_data.get("default_branch", "")
+        try:
+            branches = await client.get_repo(owner, repo_name)
+            latest_sha = branches.get("pushed_at", "")[:10].replace("-", "")
+        except Exception:
+            pass
+
+        cached = await get_cached_analysis(owner, repo_name, latest_sha)
+        if cached is not None:
+            logger.info("Cache hit for %s/%s@%s", owner, repo_name, latest_sha)
+            return cached
+
         _emit("file_tree", "started")
         try:
             default_branch = repo_data.get("default_branch", "main")
@@ -70,6 +69,7 @@ async def analyze_repository(owner: str, repo_name: str, github_token: str | Non
             _emit("issues", "done", {"count": len(issues)})
         except Exception as exc:
             _emit("issues", "error", {"error": str(exc)})
+            issues = []
 
         _emit("pull_requests", "started")
         try:
@@ -80,10 +80,11 @@ async def analyze_repository(owner: str, repo_name: str, github_token: str | Non
 
     _emit("analysis", "done")
 
-    return {
+    result = {
         "owner": owner,
         "repo": repo_name,
         "status": "completed",
+        "sha": latest_sha,
         "metadata": {
             "stars": repo_data.get("stargazers_count", 0),
             "forks": repo_data.get("forks_count", 0),
@@ -95,5 +96,9 @@ async def analyze_repository(owner: str, repo_name: str, github_token: str | Non
         },
         "tech_stack": tech_stack,
         "directory_map": directory_map,
+        "issues": issues,
         "steps": steps,
     }
+
+    await set_cached_analysis(owner, repo_name, latest_sha, result)
+    return result
