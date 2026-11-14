@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useParams } from 'react-router-dom'
+import { Link, useParams } from 'react-router-dom'
 import { type AnalysisResult, getAnalysisResult } from '../api/analyze'
 import ArchDiagram from '../components/ArchDiagram'
 import DirectoryMap from '../components/DirectoryMap'
@@ -56,6 +56,26 @@ export default function OverviewPage() {
         language={metadata.language}
         topics={metadata.topics}
       />
+
+      {taskId && (
+        <div style={{ margin: '18px 0' }}>
+          <Link
+            to={`/overview/${encodeURIComponent(taskId)}/onboarding`}
+            style={{
+              display: 'inline-block',
+              borderRadius: 6,
+              background: 'var(--b6)',
+              color: 'var(--white)',
+              padding: '10px 16px',
+              fontSize: 14,
+              fontWeight: 600,
+              textDecoration: 'none',
+            }}
+          >
+            View onboarding path
+          </Link>
+        </div>
+      )}
 
       <RepoStats
         stars={metadata.stars}
