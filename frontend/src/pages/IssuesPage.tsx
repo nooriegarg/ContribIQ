@@ -14,9 +14,6 @@ export default function IssuesPage() {
     if (!jobId) return
     apiCall<IssueMatch[]>(`/analysis/${encodeURIComponent(jobId)}/matches`)
       .then(data => {
-        // BUG: issues rendered in API response order, not sorted by match_pct.
-        // "Best match" badge applied to issues[0] regardless of its score.
-        // Fix: const sorted = [...data].sort((a, b) => b.match_pct - a.match_pct)
         setIssues(data)
       })
       .catch((err: Error) => setError(err.message))

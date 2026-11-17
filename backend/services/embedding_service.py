@@ -2,12 +2,6 @@
 Embedding service — chunks source files and stores vectors in PostgreSQL via pgvector.
 
 fastembed model: nomic-embed-code (768 dimensions, code-optimised, CPU-only)
-
-Intentional bug: each file is embedded as a single chunk. Large files silently
-exceed fastembed's 512-token limit — only the first ~100 lines are actually embedded.
-
-Issue to raise: "Files embedded without chunking — large files silently truncated"
-Fix: 50-line sliding window chunks with 10-line overlap, each chunk = separate CodeChunk row
 """
 
 import uuid
@@ -45,8 +39,6 @@ async def embed_files(
         return {"repo_id": str(repo_id), "chunks_stored": 0}
 
     paths = list(files.keys())
-    # BUG: each file embedded as one chunk — large files exceed 512-token limit
-    # Fix: split each file into 50-line windows with 10-line overlap
     contents = [files[p] for p in paths]
 
     vectors = _embed(contents)
