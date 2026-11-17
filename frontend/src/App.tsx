@@ -1,5 +1,6 @@
 import { Navigate, Route, Routes } from 'react-router-dom'
 import DashboardPage from './pages/DashboardPage'
+import IssuesPage from './pages/IssuesPage'
 import OnboardingPage from './pages/OnboardingPage'
 import ProfilePage from './pages/ProfilePage'
 import LoginPage from './pages/LoginPage'
@@ -12,6 +13,7 @@ export default function App() {
       <Route path="/dashboard" element={<DashboardPage />} />
       <Route path="/overview/:taskId/onboarding" element={<OnboardingPage />} />
       <Route path="/overview/:taskId/profile" element={<ProfilePage />} />
+      <Route path="/overview/:jobId/issues" element={<IssuesPage />} />
       <Route path="/overview/:taskId" element={<OverviewPage />} />
       <Route path="/" element={<Navigate to="/login" replace />} />
     </Routes>
