@@ -243,8 +243,8 @@ RAG-powered chat. The contributor asks a plain-language question; pgvector finds
 
 | Sub-feature | Status | Key files |
 |---|---|---|
-| Q&A backend (RAG pipeline) | **Not started** | Needs `backend/services/qa_service.py`, `backend/api/routes/qa.py` (`POST /qa/ask`). Pipeline: embed question → top-10 chunks by cosine similarity → assemble prompt with token budget → LiteLLM answer |
-| Q&A panel (React) | **Not started** | Needs `frontend/src/components/QAPanel.tsx` |
+| Q&A backend (RAG pipeline) | Done | `backend/services/qa_service.py`, `backend/api/routes/qa.py` (`POST /qa/ask`). Pipeline: embed question → top-10 chunks by cosine similarity → assemble prompt with 6,000-token budget → LiteLLM answer |
+| Q&A panel (React) | Done | `frontend/src/components/QAPanel.tsx` |
 
 ---
 
