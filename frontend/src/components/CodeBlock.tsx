@@ -5,5 +5,5 @@ interface Props {
 export default function CodeBlock({ commands }: Props) {
   if (commands.length === 0) return null
 
-  return <pre className="onboarding-code"><code>{commands.join('\n')}</code></pre>
+  return <pre className="code-block"><code>{commands.join('\n')}</code></pre>
 }

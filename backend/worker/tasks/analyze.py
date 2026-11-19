@@ -1,18 +1,12 @@
 import logging
 from typing import Any
 
-from taskiq_redis import ListQueueBroker
-
-from backend.core.config import get_settings
 from backend.services.cache_service import get_cached_analysis, set_cached_analysis
 from backend.services.github_client import GitHubClient
 from backend.services.tech_stack_service import detect_tech_stack, map_directories
+from backend.worker.broker import broker
 
 logger = logging.getLogger(__name__)
-
-_settings = get_settings()
-broker = ListQueueBroker(url=_settings.VALKEY_URL)
-
 
 @broker.task
 async def analyze_repository(owner: str, repo_name: str, github_token: str | None = None) -> dict[str, Any]:

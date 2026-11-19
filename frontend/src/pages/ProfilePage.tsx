@@ -1,9 +1,11 @@
 import { useEffect, useRef, useState } from 'react'
-import { Link, useNavigate, useParams } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { getProfile, updateProfile, type ContributorProfile } from '../api/profile'
 import ChipSelector from '../components/ChipSelector'
 import ExperienceSelector from '../components/ExperienceSelector'
-import '../styles/workflow.css'
+import WorkflowHeader from '../components/WorkflowHeader'
+import WorkflowIcon from '../components/WorkflowIcon'
+import { useWorkflow } from '../hooks/useWorkflow'
 
 const languages = [
   { value: 'python', label: 'Python' },
@@ -25,7 +27,7 @@ const interests = [
 ]
 
 export default function ProfilePage() {
-  const { taskId = '' } = useParams()
+  const { basePath } = useWorkflow()
   const navigate = useNavigate()
   const [profile, setProfile] = useState<ContributorProfile | null>(null)
   const [languagesSelected, setLanguagesSelected] = useState<string[]>([])
@@ -35,10 +37,14 @@ export default function ProfilePage() {
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
+  const [timeAvailable, setTimeAvailable] = useState('')
+  const [attempt, setAttempt] = useState(0)
   const updateQueue = useRef<Promise<void>>(Promise.resolve())
 
   useEffect(() => {
     let active = true
+    setLoading(true)
+    setError('')
     getProfile()
       .then(data => {
         if (!active) return
@@ -50,7 +56,7 @@ export default function ProfilePage() {
       .catch(reason => { if (active) setError(reason instanceof Error ? reason.message : 'Unable to load your profile.') })
       .finally(() => { if (active) setLoading(false) })
     return () => { active = false }
-  }, [])
+  }, [attempt])
 
   async function toggleSelection(
     value: string,
@@ -63,11 +69,7 @@ export default function ProfilePage() {
     setNotice('')
     setError('')
     const request = updateQueue.current.then(async () => {
-      const updated = await updateProfile({
-        languages: field === 'languages' ? next : languagesSelected,
-        interests: field === 'interests' ? next : interestsSelected,
-        experience,
-      })
+      const updated = await updateProfile({ [field]: next })
       setProfile(updated)
     })
     updateQueue.current = request.then(() => undefined, () => undefined)
@@ -86,6 +88,7 @@ export default function ProfilePage() {
       await updateQueue.current
       await updateProfile({ languages: languagesSelected, interests: interestsSelected, experience })
       setNotice('Profile saved')
+      navigate(`${basePath}/issues`)
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : 'Unable to save your profile.')
     } finally {
@@ -94,26 +97,19 @@ export default function ProfilePage() {
   }
 
   return (
-    <main className="workflow-page profile-page">
-      <header className="workflow-header">
-        <div>
-          <Link className="workflow-brand" to="/dashboard">ContribIQ</Link>
-          <h1>Your profile</h1>
-          <p>Help us match you with the right issues.</p>
+    <section className="screen active">
+      <WorkflowHeader title="Your Contributor Profile" subtitle="Help us understand your skills and interests" step={3} />
+      <div className="page-body profile-body">
+        <div className="section-intro">
+          <div className="eyebrow">Personalization</div>
+          <h2 className="pg-title">Tell us about yourself</h2>
+          <p className="pg-desc">Choose your skills and learning goals. You can update these anytime.</p>
         </div>
-        <span className="workflow-step">Step 3 of 5</span>
-      </header>
-
-      <section className="profile-content">
-        <div className="section-kicker">Personalization</div>
-        <h2>Tell us about yourself</h2>
-        <p className="section-copy">We’ll use this to find issues that fit your current skills and learning goals.</p>
-
-        {loading ? <div className="profile-loading">Loading profile…</div> : (
-          <>
-            {error && <div className="workflow-error" role="alert">{error}</div>}
-            <section className="profile-section">
-              <h3>Which languages are you comfortable with?</h3>
+        {error && <div className="notice error" role="alert">{error}{!profile && <button className="btn btn-s mt12" onClick={() => setAttempt(attempt + 1)}>Try again</button>}</div>}
+        {loading ? <p className="profile-loading" role="status">Loading profile...</p> : profile && (
+          <fieldset className="profile-controls" disabled={saving}>
+            <section className="card">
+              <h3 className="profile-q">Which languages are you comfortable with?</h3>
               <ChipSelector
                 label="Programming languages and documentation"
                 options={languages}
@@ -122,13 +118,13 @@ export default function ProfilePage() {
               />
             </section>
 
-            <section className="profile-section">
-              <h3>What’s your open-source contribution experience?</h3>
+            <section className="card">
+              <h3 className="profile-q">What’s your open-source contribution experience?</h3>
               <ExperienceSelector value={experience} onChange={setExperience} />
             </section>
 
-            <section className="profile-section">
-              <h3>What are you interested in working on?</h3>
+            <section className="card">
+              <h3 className="profile-q">What are you interested in working on?</h3>
               <ChipSelector
                 label="Areas of interest"
                 options={interests}
@@ -136,17 +132,29 @@ export default function ProfilePage() {
                 onChange={value => void toggleSelection(value, interestsSelected, setInterestsSelected, 'interests')}
               />
             </section>
-            {notice && <p className="profile-notice" role="status">{notice}</p>}
-          </>
+            <section className="card">
+              <h3 className="profile-q">How much time do you have for your first contribution?</h3>
+              <div className="radio-row" role="radiogroup" aria-label="Time availability">
+                {[['short', '~1 hour', 'A quick, focused change'], ['medium', '2–3 hours', 'Time to explore and build'], ['long', 'Half a day', 'A deeper contribution']].map(([value, label, description]) => (
+                  <label className={`radio-card${timeAvailable === value ? ' sel' : ''}`} key={value}>
+                    <input className="choice-radio" name="time" type="radio" checked={timeAvailable === value} onChange={() => setTimeAvailable(value)} />
+                    <span className="rc-icon"><WorkflowIcon name="clock" /></span><span className="rc-lbl">{label}</span><span className="rc-sub">{description}</span>
+                  </label>
+                ))}
+              </div>
+              <p className="muted time-choice-note">Planning preference for this visit only. Time availability is not saved or used for issue ranking yet.</p>
+            </section>
+            {notice && <p className="notice success mt16" role="status">{notice}</p>}
+          </fieldset>
         )}
-      </section>
-
-      <footer className="workflow-actions">
-        <button className="button-secondary" onClick={() => navigate(`/overview/${encodeURIComponent(taskId)}/onboarding`)} type="button">Back</button>
-        <button className="button-primary" disabled={loading || saving || !profile} onClick={() => void handleContinue()} type="button">
-          {saving ? 'Saving…' : 'Save profile'} <span aria-hidden="true">→</span>
+      </div>
+      <footer className="action-row">
+        <p className="ar-hint">Your skills and interests are saved to your contributor profile.</p>
+        <Link className="btn btn-s" to={`${basePath}/onboarding`}>Back</Link>
+        <button className="btn btn-p" disabled={loading || saving || !profile} onClick={() => void handleContinue()} type="button">
+          {saving ? 'Saving…' : 'Find My Issues'}<WorkflowIcon name="arrow" />
         </button>
       </footer>
-    </main>
+    </section>
   )
 }

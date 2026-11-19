@@ -21,6 +21,20 @@ export interface AnalysisResult {
   }
   tech_stack: string[]
   directory_map: { directory: string; description: string }[]
+  issues?: RepositoryIssue[]
+  steps?: ProgressEvent[]
+}
+
+export interface RepositoryIssue {
+  number: number
+  title: string
+  body: string | null
+  state: string
+  labels: { name: string }[]
+  html_url: string
+  user?: { login: string }
+  created_at?: string
+  pull_request?: { url: string }
 }
 
 export interface ProgressEvent {
@@ -30,10 +44,19 @@ export interface ProgressEvent {
 }
 
 export async function startAnalysis(req: AnalysisRequest): Promise<{ task_id: string }> {
-  return apiCall<{ task_id: string }>('/analysis/start', {
-    method: 'POST',
-    body: JSON.stringify(req),
-  })
+  const controller = new AbortController()
+  const timeout = setTimeout(() => controller.abort(
+    new Error('Submitting analysis timed out. Check that the API and Valkey are running, then try again.'),
+  ), 15000)
+  try {
+    return await apiCall<{ task_id: string }>('/analysis/start', {
+      method: 'POST',
+      body: JSON.stringify(req),
+      signal: controller.signal,
+    })
+  } finally {
+    clearTimeout(timeout)
+  }
 }
 
 export async function getAnalysisResult(taskId: string): Promise<AnalysisResult> {
@@ -45,32 +68,69 @@ export function subscribeToProgress(
   onProgress: (event: ProgressEvent) => void,
   onDone: (result: AnalysisResult) => void,
   onError: (error: string) => void,
-): EventSource {
+): AbortController {
   const base = import.meta.env.VITE_API_URL ?? 'http://localhost:8000'
   const token = localStorage.getItem('token') ?? sessionStorage.getItem('token')
-  const url = `${base}/analysis/stream/${taskId}${token ? `?token=${token}` : ''}`
+  const controller = new AbortController()
 
-  const es = new EventSource(url)
+  async function readProgress() {
+    try {
+      const response = await fetch(`${base}/analysis/stream/${encodeURIComponent(taskId)}`, {
+        headers: {
+          Accept: 'text/event-stream',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        signal: controller.signal,
+      })
+      if (!response.ok) {
+        throw new Error(response.status === 401
+          ? 'Your session has expired. Please sign in again.'
+          : `Unable to read analysis progress (HTTP ${response.status}).`)
+      }
+      if (!response.body) throw new Error('Analysis progress stream is unavailable.')
 
-  es.addEventListener('progress', (e) => {
-    onProgress(JSON.parse(e.data) as ProgressEvent)
-  })
+      const reader = response.body.getReader()
+      const decoder = new TextDecoder()
+      let buffer = ''
+      try {
+        while (!controller.signal.aborted) {
+          const { value, done } = await reader.read()
+          buffer += decoder.decode(value, { stream: !done })
+          buffer = buffer.replace(/\r\n/g, '\n')
+          let boundary: number
+          while ((boundary = buffer.indexOf('\n\n')) !== -1) {
+            const frame = buffer.slice(0, boundary)
+            buffer = buffer.slice(boundary + 2)
+            const lines = frame.split('\n')
+            const event = lines.find(line => line.startsWith('event:'))?.slice(6).trim()
+            const data = lines.filter(line => line.startsWith('data:'))
+              .map(line => line.slice(5).trimStart()).join('\n')
+            if (!data) continue
+            if (event === 'progress') onProgress(JSON.parse(data) as ProgressEvent)
+            if (event === 'done') {
+              const result = JSON.parse(data) as AnalysisResult
+              if (result.status !== 'completed') throw new Error('Repository analysis failed.')
+              onDone(result)
+              return
+            }
+            if (event === 'error') {
+              const error = JSON.parse(data) as { error?: string }
+              throw new Error(error.error || 'Analysis failed.')
+            }
+            if (event === 'timeout') throw new Error('Analysis timed out. Check that the background worker is running, then try again.')
+          }
+          if (done) throw new Error('Analysis connection closed before completion. Please try again.')
+        }
+      } finally {
+        await reader.cancel()
+      }
+    } catch (error) {
+      if (!controller.signal.aborted) {
+        onError(error instanceof Error ? error.message : 'Analysis failed.')
+      }
+    }
+  }
 
-  es.addEventListener('done', (e) => {
-    es.close()
-    onDone(JSON.parse(e.data) as AnalysisResult)
-  })
-
-  es.addEventListener('error', (e) => {
-    es.close()
-    const data = (e as MessageEvent).data
-    onError(data ? (JSON.parse(data) as { error: string }).error : 'Analysis failed')
-  })
-
-  es.addEventListener('timeout', () => {
-    es.close()
-    onError('Analysis timed out')
-  })
-
-  return es
+  void readProgress()
+  return controller
 }

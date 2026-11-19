@@ -12,7 +12,7 @@ export interface IssuePreview {
   number?: number
   title: string
   description?: string
-  difficulty: number | string
+  difficulty?: number | string
   labels?: string[]
 }
 

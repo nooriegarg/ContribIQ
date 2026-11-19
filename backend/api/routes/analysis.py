@@ -10,6 +10,7 @@ from taskiq.result import TaskiqResult
 from backend.api.routes.auth import get_current_user
 from backend.models.user import User
 from backend.services.onboarding_service import generate_onboarding_plan
+from backend.worker.broker import broker
 from backend.worker.tasks.analyze import analyze_repository
 from backend.worker.tasks.generate_diagram import generate_diagram
 
@@ -24,16 +25,29 @@ class AnalysisRequest(BaseModel):
     github_token: str | None = None
 
 
+async def _get_task_result(task_id: str) -> TaskiqResult | None:
+    if not await broker.result_backend.is_result_ready(task_id):
+        return None
+    return await broker.result_backend.get_result(task_id)
+
+
 @router.post("/start")
 async def start_analysis(
     body: AnalysisRequest,
     current_user: User = Depends(get_current_user),
 ):
-    task = await analyze_repository.kiq(
-        owner=body.owner,
-        repo_name=body.repo,
-        github_token=body.github_token,
-    )
+    try:
+        task = await asyncio.wait_for(
+            analyze_repository.kiq(
+                owner=body.owner,
+                repo_name=body.repo,
+                github_token=body.github_token,
+            ),
+            timeout=10,
+        )
+    except Exception as exc:
+        logger.exception("Could not enqueue repository analysis")
+        raise HTTPException(status_code=503, detail="Analysis queue is unavailable. Please try again.") from exc
     return {"task_id": task.task_id}
 
 
@@ -51,8 +65,9 @@ async def stream_analysis(
             await asyncio.sleep(poll_interval)
 
             try:
-                result: TaskiqResult = await analyze_repository.get_result(task_id=task_id)
+                result = await _get_task_result(task_id)
             except Exception:
+                logger.exception("Could not fetch analysis result for %s", task_id)
                 yield _sse("error", {"error": "Could not fetch task result"})
                 return
 
@@ -60,7 +75,6 @@ async def stream_analysis(
                 yield _sse("waiting", {"message": "Task not yet started"})
                 continue
 
-            # Bug: steps only available after task completes — no incremental streaming
             task_data = result.return_value or {}
             steps = task_data.get("steps", [])
 
@@ -72,7 +86,12 @@ async def stream_analysis(
                 yield _sse("error", {"error": "Task failed"})
                 return
 
-            if task_data.get("status") in ("completed", "failed"):
+            if task_data.get("status") == "failed":
+                errors = [step.get("data", {}).get("error") for step in steps if step.get("status") == "error"]
+                yield _sse("error", {"error": next((error for error in errors if error), "Repository analysis failed")})
+                return
+
+            if task_data.get("status") == "completed":
                 yield _sse("done", task_data)
                 return
 
@@ -87,7 +106,7 @@ async def get_analysis_result(
     current_user: User = Depends(get_current_user),
 ):
     try:
-        result: TaskiqResult = await analyze_repository.get_result(task_id=task_id)
+        result = await _get_task_result(task_id)
     except Exception:
         raise HTTPException(status_code=404, detail="Task not found or result expired")
 
@@ -96,6 +115,9 @@ async def get_analysis_result(
 
     if result.is_err:
         raise HTTPException(status_code=500, detail="Analysis task failed")
+
+    if (result.return_value or {}).get("status") != "completed":
+        raise HTTPException(status_code=500, detail="Repository analysis failed")
 
     return result.return_value
 
@@ -106,16 +128,19 @@ async def start_diagram(
     current_user: User = Depends(get_current_user),
 ):
     try:
-        result: TaskiqResult = await analyze_repository.get_result(task_id=task_id)
+        result = await _get_task_result(task_id)
     except Exception:
         raise HTTPException(status_code=404, detail="Analysis task not found")
 
-    if result is None or result.is_err:
+    if result is None or result.is_err or (result.return_value or {}).get("status") != "completed":
         raise HTTPException(status_code=400, detail="Analysis not complete")
 
     data = result.return_value or {}
+    if not data.get("owner") or not data.get("repo"):
+        raise HTTPException(status_code=400, detail="Repository identity is missing. Run a new analysis.")
     task = await generate_diagram.kiq(
-        repo_name=data.get("repo", ""),
+        owner=data["owner"],
+        repo_name=data["repo"],
         description=data.get("metadata", {}).get("description"),
         tech_stack=data.get("tech_stack", []),
     )
@@ -128,7 +153,7 @@ async def get_diagram(
     current_user: User = Depends(get_current_user),
 ):
     try:
-        result: TaskiqResult = await generate_diagram.get_result(task_id=diagram_task_id)
+        result = await _get_task_result(diagram_task_id)
     except Exception:
         raise HTTPException(status_code=404, detail="Diagram task not found")
 
@@ -147,7 +172,7 @@ async def get_onboarding_plan(
     current_user: User = Depends(get_current_user),
 ):
     try:
-        result: TaskiqResult = await analyze_repository.get_result(task_id=task_id)
+        result = await _get_task_result(task_id)
     except Exception:
         raise HTTPException(status_code=404, detail="Analysis task not found")
 
@@ -156,6 +181,9 @@ async def get_onboarding_plan(
 
     if result.is_err:
         raise HTTPException(status_code=500, detail="Analysis task failed")
+
+    if (result.return_value or {}).get("status") != "completed":
+        raise HTTPException(status_code=500, detail="Repository analysis failed")
 
     plan = await generate_onboarding_plan(result.return_value or {})
     return plan

@@ -1,0 +1,22 @@
+.dashboard-page { min-height: 100vh; padding: 32px clamp(20px, 5vw, 72px); background: #0d1117; color: #e6edf3; }
+.dashboard-header { display: flex; align-items: center; justify-content: space-between; gap: 20px; margin-bottom: 48px; }
+.dashboard-main { max-width: 800px; margin: 0 auto; }
+.dashboard-main h1 { margin-bottom: 8px; font-size: 26px; }
+.dashboard-copy { color: #a4afbd; font-size: 14px; line-height: 1.6; }
+.dashboard-card { margin-top: 28px; padding: clamp(20px, 4vw, 32px); border: 1px solid #30363d; border-radius: 12px; background: #161b22; }
+.dashboard-card h2 { margin-bottom: 24px; font-size: 19px; }
+.dashboard-card label { display: block; font-size: 14px; font-weight: 600; }
+.dashboard-card #repository-help { margin: 8px 0 14px; color: #a4afbd; font-size: 13px; line-height: 1.6; }
+.dashboard-input-row { display: flex; flex-wrap: wrap; gap: 12px; }
+.dashboard-input-row input { flex: 1 1 280px; min-width: 0; min-height: 44px; padding: 10px 12px; border: 1px solid #687887; border-radius: 6px; background: #0d1117; color: #e6edf3; font: inherit; font-size: 14px; }
+.dashboard-input-row input:focus-visible, .dashboard-page button:focus-visible { outline: 2px solid var(--b4); outline-offset: 3px; }
+.dashboard-input-row input[aria-invalid="true"] { border-color: #ff9a94; }
+.dashboard-primary, .dashboard-secondary { min-height: 44px; border: 1px solid #687887; border-radius: 6px; padding: 10px 16px; font: inherit; font-size: 14px; cursor: pointer; }
+.dashboard-primary { background: var(--b7); border-color: var(--b7); color: white; font-weight: 600; }
+.dashboard-secondary { background: transparent; color: #e6edf3; }
+.dashboard-page :disabled { opacity: .65; cursor: not-allowed; }
+.dashboard-error { margin-top: 12px; color: #ff9a94; font-size: 14px; line-height: 1.6; overflow-wrap: anywhere; }
+.dashboard-progress { margin-top: 24px; border-top: 1px solid #30363d; padding-top: 20px; line-height: 1.6; font-size: 14px; }
+.dashboard-steps { margin-top: 20px; padding: 0; list-style: none; }
+.dashboard-steps li { display: flex; justify-content: space-between; gap: 12px; padding: 10px 0; border-top: 1px solid #30363d; font-size: 13px; text-transform: capitalize; }
+.dashboard-steps .dashboard-error { margin: 0; }

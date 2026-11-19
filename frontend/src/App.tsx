@@ -5,16 +5,24 @@ import OnboardingPage from './pages/OnboardingPage'
 import ProfilePage from './pages/ProfilePage'
 import LoginPage from './pages/LoginPage'
 import OverviewPage from './pages/OverviewPage'
+import WorkflowLayout from './components/WorkflowLayout'
+import IssuesPage from './pages/IssuesPage'
+import IssueDetailPage from './pages/IssueDetailPage'
 
 export default function App() {
   return (
     <Routes>
       <Route path="/login" element={<LoginPage />} />
-      <Route path="/dashboard" element={<DashboardPage />} />
-      <Route path="/overview/:taskId/onboarding" element={<OnboardingPage />} />
-      <Route path="/overview/:taskId/profile" element={<ProfilePage />} />
-      <Route path="/overview/:jobId/issues" element={<IssuesPage />} />
-      <Route path="/overview/:taskId" element={<OverviewPage />} />
+      <Route element={<WorkflowLayout hero />}>
+        <Route path="/dashboard" element={<DashboardPage />} />
+      </Route>
+      <Route path="/overview/:taskId" element={<WorkflowLayout />}>
+        <Route index element={<OverviewPage />} />
+        <Route path="onboarding" element={<OnboardingPage />} />
+        <Route path="profile" element={<ProfilePage />} />
+        <Route path="issues" element={<IssuesPage />} />
+        <Route path="issues/:issueNumber" element={<IssueDetailPage />} />
+      </Route>
       <Route path="/" element={<Navigate to="/login" replace />} />
     </Routes>
   )

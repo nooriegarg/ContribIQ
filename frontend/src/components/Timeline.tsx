@@ -8,13 +8,13 @@ interface Props {
 
 export default function Timeline({ steps }: Props) {
   return (
-    <ol className="onboarding-timeline">
+    <ol className="tl-wrap">
       {steps.map((step, index) => (
-        <li className={`timeline-step${index === 0 ? ' is-active' : ''}`} key={step.step}>
-          <span className="timeline-marker" aria-hidden="true">{step.step}</span>
-          <article className="timeline-card">
-            <h3>{step.title}</h3>
-            <p>{step.description}</p>
+        <li className={`tl-item${index === 0 ? ' active' : ''}`} key={step.step}>
+          <span className="tl-dot" aria-hidden="true">{step.step}</span>
+          <article className="tl-card">
+            <h3 className="tl-ttl">{step.title}</h3>
+            <p className="tl-dsc">{step.description}</p>
             <CodeBlock commands={step.commands ?? []} />
             <FileReadList files={step.files_to_read ?? []} />
           </article>

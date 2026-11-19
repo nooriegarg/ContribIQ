@@ -7,18 +7,18 @@ interface Props {
 
 export default function ChipSelector({ label, options, selected, onChange }: Props) {
   return (
-    <div className="profile-chip-list" role="group" aria-label={label}>
+    <div className="chip-grid" role="group" aria-label={label}>
       {options.map(option => {
         const isSelected = selected.includes(option.value)
         return (
           <button
             aria-pressed={isSelected}
-            className={`profile-chip${isSelected ? ' is-selected' : ''}`}
+            className={`chip${isSelected ? ' sel' : ''}`}
             key={option.value}
             onClick={() => onChange(option.value)}
             type="button"
           >
-            <span className="profile-chip-check" aria-hidden="true">{isSelected ? '✓' : ''}</span>
+            <span className="chip-box" aria-hidden="true">{isSelected ? '✓' : ''}</span>
             {option.label}
           </button>
         )
