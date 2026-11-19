@@ -1,6 +1,5 @@
 import { Navigate, Route, Routes } from 'react-router-dom'
 import DashboardPage from './pages/DashboardPage'
-import IssuesPage from './pages/IssuesPage'
 import OnboardingPage from './pages/OnboardingPage'
 import ProfilePage from './pages/ProfilePage'
 import LoginPage from './pages/LoginPage'
