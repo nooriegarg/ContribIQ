@@ -171,7 +171,7 @@ This is the core async pipeline. It runs as a background TaskIQ worker so the HT
 | TaskIQ + Valkey task queue | Done | `backend/worker/broker.py`, `backend/worker/tasks/__init__.py`, `docker-compose.yml` |
 | Analysis pipeline tasks (file tree → tech stack → directories) | Done | `backend/worker/tasks/analyze.py`, `backend/services/tech_stack_service.py` |
 | SSE progress endpoint | Done | `backend/api/routes/analysis.py` (`POST /analysis/start`, `GET /analysis/stream/{task_id}`, `GET /analysis/result/{task_id}`), `frontend/src/api/analyze.ts`, `frontend/src/hooks/useAnalysis.ts` |
-| Analysis result caching (Valkey, 24 h TTL) | **Not started** | Needs `backend/services/cache_service.py` — cache key is `analysis:{owner}:{repo}:{sha}` |
+| Analysis result caching (Valkey, 24 h TTL) | Done | `backend/services/cache_service.py` — cache key is `analysis:{owner}:{repo}:{sha}`, 24 h TTL, wired into `analyze_repository` task |
 
 ---
 
@@ -231,9 +231,9 @@ Selecting an issue triggers a deeper analysis: plain-language AI explanation, wh
 
 | Sub-feature | Status | Key files |
 |---|---|---|
-| pgvector + fastembed embedding pipeline | **Not started** | Needs `backend/db/vector.py`, `backend/models/code_chunk.py`, `backend/services/embedding_service.py`, `backend/worker/tasks/embed_repo.py`, `alembic/versions/0008_add_pgvector_code_chunks.py`. Chunking: 50-line sliding window with 10-line overlap, `nomic-embed-code` model (768 dims) |
-| Issue deep-dive backend | **Not started** | Needs `backend/services/issue_detail_service.py`, `backend/api/routes/issues.py` (`GET /issues/{issue_number}/detail`). Similar PRs fetched via pgvector cosine similarity |
-| Issue deep-dive React screen | UI implemented; AI integrations unavailable | `frontend/src/pages/IssueDetailPage.tsx`; actual issue description, general contribution guidance, functional tabs and local checklist, GitHub links, and explicit unavailable states for AI-only data |
+| pgvector + fastembed embedding pipeline | Done | `backend/db/vector.py`, `backend/models/code_chunk.py`, `backend/services/embedding_service.py`, `backend/worker/tasks/embed_repo.py`, `alembic/versions/0008_add_pgvector_code_chunks.py`. fastembed `nomic-embed-code` model (768 dims), filters to text files ≤ 100 KB |
+| Issue deep-dive backend | Done | `backend/services/issue_detail_service.py`, `backend/api/routes/issues.py` (`GET /issues/{issue_number}/detail?owner=&repo=`). AI explanation + impact chain via Ollama, similar PRs from GitHub API |
+| Issue deep-dive React screen | UI implemented; AI integrations unavailable | `frontend/src/pages/IssueDetailPage.tsx`, `frontend/src/components/Checklist.tsx`, `frontend/src/components/ReadinessScore.tsx`, `frontend/src/components/SimilarPRs.tsx`, `frontend/src/components/ImpactChain.tsx` |
 
 ---
 
