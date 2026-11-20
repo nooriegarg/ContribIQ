@@ -32,3 +32,4 @@ async def issue_detail(
                    "Run an analysis first to score issues.",
         )
     return detail
+

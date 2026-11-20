@@ -5,11 +5,17 @@ import logging
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 from taskiq.result import TaskiqResult
 
 from backend.api.routes.auth import get_current_user
+from backend.db.session import get_db
+from backend.models.issue import Issue
+from backend.models.profile import ContributorProfile
 from backend.models.user import User
 from backend.services.onboarding_service import generate_onboarding_plan
+from backend.services.readiness_service import calculate_readiness
 from backend.worker.broker import broker
 from backend.worker.tasks.analyze import analyze_repository
 from backend.worker.tasks.generate_diagram import generate_diagram
@@ -187,6 +193,62 @@ async def get_onboarding_plan(
 
     plan = await generate_onboarding_plan(result.return_value or {})
     return plan
+
+
+@router.get("/result/{task_id}/readiness/{issue_number}")
+async def get_readiness_score(
+    task_id: str,
+    issue_number: int,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    try:
+        result = await _get_task_result(task_id)
+    except Exception:
+        raise HTTPException(status_code=404, detail="Analysis task not found")
+
+    if result is None:
+        raise HTTPException(status_code=202, detail="Analysis still in progress")
+
+    if result.is_err or (result.return_value or {}).get("status") != "completed":
+        raise HTTPException(status_code=500, detail="Analysis task failed")
+
+    analysis_data = result.return_value or {}
+    full_name = f"{analysis_data.get('owner', '')}/{analysis_data.get('repo', '')}"
+
+    issue_row = await db.execute(
+        select(Issue).where(
+            Issue.repo_full_name == full_name,
+            Issue.number == issue_number,
+        )
+    )
+    issue = issue_row.scalar_one_or_none()
+    issue_dict = (
+        {
+            "number": issue.number,
+            "files_affected": issue.files_affected or [],
+            "labels": issue.labels or [],
+        }
+        if issue is not None
+        else None
+    )
+
+    profile_row = await db.execute(
+        select(ContributorProfile).where(ContributorProfile.user_id == current_user.id)
+    )
+    profile = profile_row.scalar_one_or_none()
+    profile_dict = (
+        {"languages": profile.languages or [], "experience": profile.experience}
+        if profile is not None
+        else None
+    )
+
+    return calculate_readiness(
+        onboarding_plan=None,
+        issue=issue_dict,
+        profile=profile_dict,
+        issue_viewed=True,
+    )
 
 
 def _sse(event: str, data: dict) -> str:
