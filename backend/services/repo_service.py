@@ -2,11 +2,12 @@ import logging
 from datetime import datetime, timezone
 
 import httpx
+from fastapi import HTTPException
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.models.repository import Repository
-from backend.services.github_client import GitHubClient
+from backend.services.github_client import GitHubClient, GitHubRateLimitError
 
 logger = logging.getLogger(__name__)
 
@@ -17,9 +18,38 @@ async def fetch_and_store_metadata(
     db: AsyncSession,
     github_token: str | None = None,
 ) -> Repository:
-    async with GitHubClient(token=github_token) as client:
-        # Bug: gidgethub.BadRequest from a private/missing repo is not caught here
-        data = await client.get_repo(owner, repo_name)
+    try:
+        async with GitHubClient(token=github_token) as client:
+            data = await client.get_repo(owner, repo_name)
+    except GitHubRateLimitError:
+        # Keep rate-limit metadata available to callers that handle retries.
+        raise
+    except httpx.HTTPStatusError as exc:
+        status_code = exc.response.status_code
+        if status_code in (403, 404):
+            # GitHub intentionally returns 404 for private repositories that
+            # the authenticated user is not allowed to access.
+            raise HTTPException(
+                status_code=404,
+                detail="Repository not found or you do not have permission to access it.",
+            ) from exc
+        if status_code == 401:
+            raise HTTPException(
+                status_code=401,
+                detail="GitHub authentication failed. Reconnect your GitHub account and try again.",
+            ) from exc
+
+        logger.warning(
+            "GitHub returned HTTP %s while fetching metadata for %s/%s",
+            status_code,
+            owner,
+            repo_name,
+            exc_info=True,
+        )
+        raise HTTPException(
+            status_code=502,
+            detail="GitHub could not retrieve repository metadata. Please try again.",
+        ) from exc
 
     full_name = data["full_name"]
 
