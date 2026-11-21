@@ -7,20 +7,24 @@ import Timeline from '../components/Timeline'
 import WorkflowHeader from '../components/WorkflowHeader'
 import WorkflowIcon from '../components/WorkflowIcon'
 import { getOpenIssues } from '../utils/issues'
+import TimelineSkeleton from '../components/TimelineSkeleton'
 
 export default function OnboardingPage() {
   const { taskId, basePath, result } = useWorkflow()
   const [plan, setPlan] = useState<OnboardingPlan | null>(null)
   const [error, setError] = useState('')
   const [attempt, setAttempt] = useState(0)
+  const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
     let active = true
     setPlan(null)
     setError('')
+    setIsLoading(true)
     getOnboardingPlan(taskId)
       .then(data => { if (active) setPlan(data) })
-      .catch(reason => { if (active) setError(reason instanceof Error ? reason.message : 'Unable to load onboarding plan.') })
+      .catch(reason => { if (active) setError(reason instanceof Error ? reason.message : 'Unable to load onboarding plan.')})
+      .finally(() => { if (active) setIsLoading(false) })
     return () => { active = false }
   }, [taskId, attempt])
 
@@ -29,8 +33,11 @@ export default function OnboardingPage() {
     <section className="screen active">
       <WorkflowHeader title="Your Onboarding Path" subtitle={`A guided walkthrough for ${result?.metadata.full_name}`} step={2} />
       <div className="page-body">
-        {error ? <div className="notice error" role="alert">{error}<p>Plan generation requires the configured Ollama model to be available.</p><button className="btn btn-s mt12" onClick={() => setAttempt(attempt + 1)}>Try again</button></div>
-          : !plan ? <p className="notice" role="status">Generating your onboarding plan...</p>
+        <span className="sr-only" role="status">
+          {isLoading ? 'Generating your onboarding plan...' : ''}
+        </span>
+        {isLoading ? <TimelineSkeleton />
+          : error || !plan ? <div className="notice error" role="alert">{error || 'Unable to load onboarding plan.'}<p>Plan generation requires the configured Ollama model to be available.</p><button className="btn btn-s mt12" onClick={() => setAttempt(attempt + 1)}>Try again</button></div>
             : <div className="grid2">
               <section>
                 <div className="section-intro"><p className="eyebrow">First {plan.estimated_minutes} Minutes</p><h2 className="pg-title">Your action plan</h2><p className="pg-desc">Complete these steps in order to understand the project before writing any code.</p></div>
