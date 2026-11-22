@@ -8,6 +8,7 @@ export interface LoginPayload {
 
 export interface LoginResponse {
   token: string
+  refreshToken: string
   user: { id: string; email: string; name: string }
 }
 
@@ -32,16 +33,17 @@ export async function loginWithEmail(payload: LoginPayload): Promise<LoginRespon
     body: JSON.stringify({ email: payload.email, password: payload.password }),
   })
 
-  return getAuthenticatedUser(data.access_token)
+  return getAuthenticatedUser(data.access_token, data.refresh_token)
 }
 
-async function getAuthenticatedUser(token: string): Promise<LoginResponse> {
+async function getAuthenticatedUser(token: string,refreshToken : string): Promise<LoginResponse> {
   const me = await apiCall<BackendUser>('/auth/me', {
     headers: { Authorization: `Bearer ${token}` },
   })
 
   return {
     token,
+    refreshToken,
     user: {
       id: me.id,
       email: me.email,
@@ -60,7 +62,7 @@ export async function registerWithEmail(payload: {
     body: JSON.stringify(payload),
   })
 
-  return getAuthenticatedUser(data.access_token)
+  return getAuthenticatedUser(data.access_token, data.refresh_token)
 }
 
 export async function requestPasswordReset(_email: string): Promise<void> {

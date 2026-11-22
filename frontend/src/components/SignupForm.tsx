@@ -41,7 +41,7 @@ export default function SignupForm({ onSuccess }: Props) {
       const data = await registerWithEmail({
         name: name.trim(), email: email.trim(), password,
       })
-      login(data.token, data.user, false)
+      login(data.token, data.refreshToken, data.user, false)
       onSuccess()
     } catch (err) {
       setAlert({

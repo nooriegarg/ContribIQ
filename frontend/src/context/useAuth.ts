@@ -9,7 +9,7 @@ export interface User {
 interface AuthContextValue {
   user: User | null
   token: string | null
-  login: (token: string, user: User, rememberMe: boolean) => void
+  login: (token: string, refreshToken:string, user: User, rememberMe: boolean) => void
   logout: () => void
 }
 

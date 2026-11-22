@@ -53,7 +53,7 @@ export default function LoginForm({ onSuccess }: Props) {
     setLoading(true)
     try {
       const data = await loginWithEmail({ email: email.trim(), password, rememberMe })
-      login(data.token, data.user, rememberMe)
+      login(data.token, data.refreshToken, data.user, rememberMe)
       onSuccess()
     } catch (err) {
       setAlert({ message: (err as Error).message || 'Invalid email or password.', variant: 'error' })
