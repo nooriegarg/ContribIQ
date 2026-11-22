@@ -3,6 +3,7 @@ import DashboardPage from './pages/DashboardPage'
 import OnboardingPage from './pages/OnboardingPage'
 import ProfilePage from './pages/ProfilePage'
 import LoginPage from './pages/LoginPage'
+import AuthCallbackPage from './pages/AuthCallbackPage'
 import OverviewPage from './pages/OverviewPage'
 import WorkflowLayout from './components/WorkflowLayout'
 import IssuesPage from './pages/IssuesPage'
@@ -12,6 +13,7 @@ export default function App() {
   return (
     <Routes>
       <Route path="/login" element={<LoginPage />} />
+      <Route path="/auth/callback" element={<AuthCallbackPage />} />
       <Route element={<WorkflowLayout hero />}>
         <Route path="/dashboard" element={<DashboardPage />} />
       </Route>
