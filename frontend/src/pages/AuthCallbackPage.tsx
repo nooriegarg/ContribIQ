@@ -23,7 +23,7 @@ export default function AuthCallbackPage() {
         return res.json()
       })
       .then((user) => {
-        login(token, user, true)
+        login(token, '', user, true)
         navigate('/dashboard', { replace: true })
       })
       .catch(() => {
