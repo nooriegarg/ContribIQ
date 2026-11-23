@@ -83,6 +83,14 @@ export default function ArchDiagram({ taskId, repoName }: ArchDiagramProps) {
     return () => { active = false; clearInterval(poll); clearTimeout(timeout) }
   }, [diagramTaskId, status])
 
+  const fitToWidth = useCallback(() => {
+    const viewport = viewportRef.current
+    const { w } = naturalRef.current
+    if (!viewport || !w) return
+    setZoom(Math.min(Math.max((viewport.clientWidth - 24) / w, 0.2), 1.6))
+    viewport.scrollTo({ top: 0, left: 0 })
+  }, [])
+
   useEffect(() => {
     if (!syntax || !containerRef.current) return
 
@@ -107,15 +115,7 @@ export default function ArchDiagram({ taskId, repoName }: ArchDiagramProps) {
         setError(reason instanceof Error ? reason.message : 'The generated diagram could not be rendered.')
         setStatus('error')
       })
-  }, [syntax, repoName])
-
-  const fitToWidth = useCallback(() => {
-    const viewport = viewportRef.current
-    const { w } = naturalRef.current
-    if (!viewport || !w) return
-    setZoom(Math.min(Math.max((viewport.clientWidth - 24) / w, 0.2), 1.6))
-    viewport.scrollTo({ top: 0, left: 0 })
-  }, [])
+  }, [syntax, repoName, fitToWidth])
 
   useEffect(() => {
     const el = containerRef.current?.querySelector('svg')
@@ -125,7 +125,7 @@ export default function ArchDiagram({ taskId, repoName }: ArchDiagramProps) {
     el.setAttribute('height', String(h * zoom))
   }, [zoom, syntax])
 
-  const changeZoom = (factor: number) => setZoom(z => Math.min(Math.max(z * factor, 0.2), 4))
+  const changeZoom = useCallback((factor: number) => setZoom(z => Math.min(Math.max(z * factor, 0.2), 4)), [])
 
   useEffect(() => {
     const viewport = viewportRef.current
@@ -137,7 +137,7 @@ export default function ArchDiagram({ taskId, repoName }: ArchDiagramProps) {
     }
     viewport.addEventListener('wheel', onWheel, { passive: false })
     return () => viewport.removeEventListener('wheel', onWheel)
-  }, [status])
+  }, [status, changeZoom])
 
   const startDrag = (event: React.MouseEvent<HTMLDivElement>) => {
     const viewport = viewportRef.current
