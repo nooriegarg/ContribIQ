@@ -8,10 +8,102 @@ An AI-powered open-source contributor onboarding assistant. Point it at any GitH
 
 ## Table of Contents
 
+- [Architecture](#architecture)
 - [Local Setup](#local-setup)
 - [Feature Areas](#feature-areas)
 - [Contributing](#contributing)
 - [Tech Stack Details](#tech-stack-details)
+
+---
+
+## Architecture
+
+The diagram below is a map of how ContribIQ is put together and which folder to open for each part. Solid arrows are connections that exist in the code today.
+
+```mermaid
+flowchart TB
+    user(["Contributor<br/>(browser)"])
+
+    subgraph FE["Frontend · frontend/src (React + Vite)"]
+        pages["Pages and workflow screens<br/>pages/ · components/<br/>routes in App.tsx"]
+        client["API client<br/>api/client.ts + api/*.ts<br/>JWT sent as Bearer token"]
+    end
+
+    subgraph BE["Backend API · backend/ (FastAPI, entry point main.py)"]
+        routes["HTTP routes<br/>api/routes/<br/>auth · oauth · profile · analysis · issues · qa"]
+        services["Business logic<br/>services/<br/>onboarding · architecture · github_client · cache"]
+        dbl["Persistence layer<br/>db/ + models/<br/>SQLAlchemy (async)"]
+    end
+
+    subgraph WK["Background worker · backend/worker/ (TaskIQ)"]
+        tasks["Tasks in worker/tasks/<br/>analyze_repository<br/>generate_diagram"]
+    end
+
+    subgraph DATA["Data stores"]
+        pg[("PostgreSQL + pgvector<br/>users · profiles")]
+        vk[("Valkey<br/>task queue · task results<br/>analysis cache · OAuth state")]
+    end
+
+    subgraph EXT["External services"]
+        gh{{"GitHub<br/>OAuth + REST API"}}
+        ol{{"Ollama<br/>local LLM via LiteLLM"}}
+    end
+
+    unwired["Built but not wired up yet:<br/>/qa/ask · score_issues · embed_repository"]
+
+    user --> pages
+    pages --> client
+    client -->|"HTTP/JSON + SSE"| routes
+    routes --> services
+    routes --> dbl
+    dbl -->|"SQL"| pg
+    routes -->|"enqueue tasks, read results"| vk
+    vk -->|"worker pulls tasks"| tasks
+    tasks -->|"save results, cache analysis"| vk
+    tasks -->|"GitHub REST"| gh
+    tasks -->|"diagram prompt"| ol
+    routes -->|"GitHub OAuth login"| gh
+    services -->|"onboarding prompt"| ol
+
+    classDef app fill:#e3f2fd,stroke:#1565c0,color:#000
+    classDef store fill:#e8f5e9,stroke:#2e7d32,color:#000
+    classDef ext fill:#fff3e0,stroke:#ef6c00,color:#000
+    classDef note fill:#f5f5f5,stroke:#999,stroke-dasharray:4 3,color:#444
+    class pages,client,routes,services,dbl,tasks app
+    class pg,vk store
+    class gh,ol ext
+    class unwired note
+```
+
+### How the pieces fit together
+
+- **Frontend (`frontend/src`)** is a React app. Pages in `pages/` render the workflow screens, and everything that talks to the backend goes through `api/client.ts`, which attaches the JWT to each request.
+- **Backend API (`backend/`)** is a FastAPI app started from `main.py`. Routes in `api/routes/` receive requests and hand the real work to `services/`. Services use the models in `models/` through the async SQLAlchemy session in `db/`.
+- **Background worker (`backend/worker/`)** runs the slow jobs (repository analysis and diagram generation) so HTTP requests return immediately. The API puts a job on a queue in Valkey, a TaskIQ worker picks it up, and the result is stored back in Valkey for 24 hours.
+- **PostgreSQL + pgvector** holds users and contributor profiles. The `issues`, `repositories` and `code_chunks` tables exist too, but nothing fills them yet (see the dashed box in the diagram).
+- **Valkey** is the task queue, the task-result store, the 24-hour analysis cache, and the place OAuth CSRF state is kept.
+- **GitHub** is used for OAuth login and for reading repository data. **Ollama** (called through LiteLLM) writes the onboarding plan and the architecture diagram.
+
+### Where to start reading
+
+1. `backend/main.py` and `backend/api/routes/__init__.py`: the app entry point and the list of routers.
+2. `backend/api/routes/analysis.py`: the main API surface (start analysis, progress stream, results, diagram, onboarding).
+3. `backend/worker/tasks/analyze.py`: what repository analysis actually does, step by step.
+4. `backend/services/`: the business logic (`github_client.py`, `tech_stack_service.py`, `onboarding_service.py`, `architecture_service.py`).
+5. `frontend/src/App.tsx`, then `frontend/src/api/analyze.ts` and `frontend/src/pages/OverviewPage.tsx`: the screens and how they call the API.
+
+### Example flows
+
+**Analysing a repository**
+`DashboardPage` calls `POST /analysis/start` (`frontend/src/api/analyze.ts`). `analysis.py` queues `analyze_repository` with `.kiq()`. The worker (`worker/tasks/analyze.py`) reads metadata, the file tree, issues and pull requests from GitHub, detects the tech stack, and stores the result in Valkey. Meanwhile the browser follows `GET /analysis/stream/{task_id}` (server-sent events) and then loads `GET /analysis/result/{task_id}` to show the overview.
+
+**Architecture diagram on the overview page**
+`ArchDiagram.tsx` calls `POST /analysis/{task_id}/diagram`, which queues `generate_diagram`. The worker samples source files from GitHub (`architecture_service.py`), asks Ollama for components and connections (`ai_service.py`), validates the answer, and returns Mermaid text. The browser polls `GET /analysis/diagram/{id}` and renders it.
+
+**Onboarding plan**
+`OnboardingPage` calls `GET /analysis/result/{task_id}/onboarding`. This one does not use the worker: `onboarding_service.py` runs inside the API request, prompts Ollama, filters unsafe shell commands from the answer, and falls back to a basic plan if the model output is unusable.
+
+> The diagram shows connections found in the code. It is a map for contributors, not a complete list of every module. Features marked in the [Feature Areas](#feature-areas) tables as not dispatched, not mounted or not shown in the UI are intentionally left out of the arrows.
 
 ---
 
