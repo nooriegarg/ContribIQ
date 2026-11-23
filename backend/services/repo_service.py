@@ -6,6 +6,7 @@ from fastapi import HTTPException
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from backend.core.config import get_settings
 from backend.models.repository import Repository
 from backend.services.github_client import GitHubClient, GitHubRateLimitError
 
@@ -18,8 +19,10 @@ async def fetch_and_store_metadata(
     db: AsyncSession,
     github_token: str | None = None,
 ) -> Repository:
+    settings = get_settings()
+    token = github_token or settings.GITHUB_TOKEN
     try:
-        async with GitHubClient(token=github_token) as client:
+        async with GitHubClient(token=token) as client:
             data = await client.get_repo(owner, repo_name)
     except GitHubRateLimitError:
         # Keep rate-limit metadata available to callers that handle retries.
@@ -74,7 +77,7 @@ async def fetch_and_store_metadata(
     repo.default_branch = data.get("default_branch", "main")
 
     default_branch = repo.default_branch
-    branch_data = await _fetch_branch_sha(owner, repo_name, default_branch, github_token)
+    branch_data = await _fetch_branch_sha(owner, repo_name, default_branch, token)
     repo.latest_sha = branch_data
 
     repo.last_analyzed = datetime.now(timezone.utc)

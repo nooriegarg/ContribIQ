@@ -28,6 +28,7 @@
 .contrib-shell .section-intro { margin-bottom: 24px; }
 .contrib-shell .ctitle-icon { color: var(--b7); flex: 0 0 auto; }
 .contrib-shell .ctitle-icon svg { fill: none; }
+.contrib-shell .card { max-width: none; backdrop-filter: none; -webkit-backdrop-filter: none; }
 .contrib-shell .grid2 > *, .contrib-shell .grid3 > * { min-width: 0; }
 .contrib-shell .grid2 > .card + .card { margin-top: 0; }
 .contrib-shell .rb-icon { color: var(--b6); }

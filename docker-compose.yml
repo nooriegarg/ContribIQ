@@ -40,6 +40,7 @@ services:
       DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-contribiq}:${POSTGRES_PASSWORD:-contribiq}@db:5432/${POSTGRES_DB:-contribiq}
       VALKEY_URL: redis://valkey:6379/0
       FRONTEND_URL: http://localhost:5173
+      OLLAMA_URL: http://ollama:11434
     ports:
       - "8000:8000"
     volumes:
@@ -60,6 +61,7 @@ services:
       DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-contribiq}:${POSTGRES_PASSWORD:-contribiq}@db:5432/${POSTGRES_DB:-contribiq}
       VALKEY_URL: redis://valkey:6379/0
       FRONTEND_URL: http://localhost:5173
+      OLLAMA_URL: http://ollama:11434
     volumes:
       - ./backend:/app/backend
 

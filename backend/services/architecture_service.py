@@ -73,3 +73,51 @@ async def collect_architecture_context(
     if not any(PurePosixPath(path).suffix in _SOURCE_SUFFIXES for path in sources):
         raise ValueError("No readable application source files were found for an architecture diagram.")
     return sources, [path for _, path in candidates[:60]]
+
+
+async def collect_repo_structure(
+    client: GitHubClient, owner: str, repo_name: str, max_files: int = 60,
+) -> tuple[dict[str, str], list[str]]:
+    """Return head excerpts of files spread across every directory, plus all source paths in the tree."""
+    metadata = await client.get_repo(owner, repo_name)
+    branch = metadata.get("default_branch", "main")
+    tree = await client.get_file_tree(owner, repo_name, branch)
+    source_paths: list[str] = []
+    fetchable: dict[str, list[tuple[int, str]]] = {}
+    compose: list[str] = []
+    for entry in tree:
+        if entry.get("type") != "blob" or entry.get("mode") == "120000":
+            continue
+        path = entry["path"]
+        priority = _file_priority(path)
+        if priority is None:
+            continue
+        if PurePosixPath(path).name in _COMPOSE_FILES:
+            compose.append(path)
+        elif PurePosixPath(path).suffix in _SOURCE_SUFFIXES:
+            source_paths.append(path)
+            if 0 < entry.get("size", 0) <= 100_000:
+                fetchable.setdefault(str(PurePosixPath(path).parent), []).append((priority, path))
+    # Round-robin across directories so every component contributes files to the import graph
+    queues = [[p for _, p in sorted(files)] for _, files in sorted(fetchable.items())]
+    selected = compose[:2]
+    depth = 0
+    while len(selected) < max_files and any(depth < len(q) for q in queues):
+        for queue in queues:
+            if depth < len(queue) and len(selected) < max_files:
+                selected.append(queue[depth])
+        depth += 1
+    semaphore = asyncio.Semaphore(10)
+
+    async def fetch(path: str) -> str | None:
+        async with semaphore:
+            try:
+                return await client.get_file_content(owner, repo_name, path, ref=branch)
+            except Exception:
+                return None
+
+    contents = await asyncio.gather(*(fetch(path) for path in selected))
+    sources = {path: content[:4000] for path, content in zip(selected, contents) if content and content.strip()}
+    if not source_paths:
+        raise ValueError("No readable application source files were found for an architecture diagram.")
+    return sources, source_paths

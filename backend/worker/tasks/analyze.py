@@ -1,6 +1,7 @@
 import logging
 from typing import Any
 
+from backend.core.config import get_settings
 from backend.services.cache_service import get_cached_analysis, set_cached_analysis
 from backend.services.github_client import GitHubClient
 from backend.services.tech_stack_service import detect_tech_stack, map_directories
@@ -10,6 +11,8 @@ logger = logging.getLogger(__name__)
 
 @broker.task
 async def analyze_repository(owner: str, repo_name: str, github_token: str | None = None) -> dict[str, Any]:
+    settings = get_settings()
+    token = github_token or settings.GITHUB_TOKEN
     steps: list[dict[str, Any]] = []
 
     def _emit(step: str, status: str, data: Any = None) -> None:
@@ -17,7 +20,7 @@ async def analyze_repository(owner: str, repo_name: str, github_token: str | Non
         steps.append(event)
         logger.info("Analysis [%s/%s] %s: %s", owner, repo_name, step, status)
 
-    async with GitHubClient(token=github_token) as client:
+    async with GitHubClient(token=token) as client:
         _emit("metadata", "started")
         try:
             repo_data = await client.get_repo(owner, repo_name)

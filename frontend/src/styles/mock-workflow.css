@@ -898,11 +898,63 @@
     }
 
     /* ARCHITECTURE SVG */
-    .contrib-shell .arch-wrap {
+    .contrib-shell .arch-head {
       display: flex;
-      justify-content: center;
-      padding: 10px 0 4px;
-      overflow-x: auto
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px
+    }
+
+    .contrib-shell .arch-controls {
+      display: flex;
+      gap: 6px;
+      align-items: center;
+      font-size: 12px;
+      color: var(--gd)
+    }
+
+    .contrib-shell .arch-controls button {
+      min-width: 32px;
+      height: 30px;
+      padding: 0 10px;
+      border: 1px solid var(--gl);
+      border-radius: 6px;
+      background: white;
+      color: var(--b10);
+      font-weight: 700;
+      cursor: pointer
+    }
+
+    .contrib-shell .arch-controls button:hover {
+      background: var(--b2)
+    }
+
+    .contrib-shell .arch-viewport {
+      height: 72vh;
+      min-height: 420px;
+      overflow: auto;
+      background: #fafafa;
+      border: 1px solid #e0e0e0;
+      border-radius: 8px;
+      cursor: grab
+    }
+
+    .contrib-shell .arch-viewport.dragging {
+      cursor: grabbing;
+      user-select: none
+    }
+
+    .contrib-shell .arch-wrap {
+      display: inline-block;
+      padding: 12px;
+      min-width: 100%;
+      box-sizing: border-box
+    }
+
+    .contrib-shell .arch-wrap svg {
+      display: block;
+      max-width: none !important;
+      margin: 0 auto
     }
 
     /* ONBOARDING */
