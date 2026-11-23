@@ -27,8 +27,8 @@ services:
 
   api:
     build:
-      context: ./backend
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: backend/Dockerfile
     command: uvicorn backend.main:app --host 0.0.0.0 --port 8000
     depends_on:
       db:
@@ -36,6 +36,10 @@ services:
       valkey:
         condition: service_healthy
     env_file: .env
+    environment:
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-contribiq}:${POSTGRES_PASSWORD:-contribiq}@db:5432/${POSTGRES_DB:-contribiq}
+      VALKEY_URL: redis://valkey:6379/0
+      FRONTEND_URL: http://localhost:5173
     ports:
       - "8000:8000"
     volumes:
@@ -43,8 +47,8 @@ services:
 
   worker:
     build:
-      context: ./backend
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: backend/Dockerfile
     command: taskiq worker backend.worker.broker:broker backend.worker.tasks
     depends_on:
       db:
@@ -52,6 +56,10 @@ services:
       valkey:
         condition: service_healthy
     env_file: .env
+    environment:
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-contribiq}:${POSTGRES_PASSWORD:-contribiq}@db:5432/${POSTGRES_DB:-contribiq}
+      VALKEY_URL: redis://valkey:6379/0
+      FRONTEND_URL: http://localhost:5173
     volumes:
       - ./backend:/app/backend
 
