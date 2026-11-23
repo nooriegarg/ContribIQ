@@ -1,0 +1,29 @@
+backend:
+  - backend/**
+  - requirements.txt
+
+frontend:
+  - frontend/**
+
+database:
+  - alembic/**
+  - alembic.ini
+  - backend/models/**
+  - backend/db/**
+
+tests:
+  - backend/tests/**
+
+documentation:
+  - README.md
+  - CONTRIBUTING.md
+  - CODE_OF_CONDUCT.md
+  - SECURITY.md
+  - docs/**
+
+ci:
+  - .github/**
+
+docker:
+  - docker-compose.yml
+  - "**/Dockerfile"
