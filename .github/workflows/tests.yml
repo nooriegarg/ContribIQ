@@ -52,4 +52,10 @@ jobs:
         run: pip install -r requirements.txt pytest pytest-asyncio pytest-cov
 
       - name: Run tests with coverage
+        env:
+          DATABASE_URL: postgresql://test:test@localhost:5432/test
+          SECRET_KEY: ci-test-secret-key
+          GITHUB_CLIENT_ID: ci-client-id
+          GITHUB_CLIENT_SECRET: ci-client-secret
+          FRONTEND_URL: http://localhost:3000
         run: python -m pytest backend/tests/ -v --cov=backend --cov-fail-under=50
