@@ -170,5 +170,5 @@ async def github_callback(
     # redirect to frontend SPA — tokens in query params, frontend stores them
     access_token = create_access_token(user.id)
     refresh_token = create_refresh_token(user.id)
-    qs = urlencode({"access_token": access_token, "refresh_token": refresh_token})
+    qs = urlencode({"access_token": access_token, "refresh_token": refresh_token, "github_token": github_token})
     return RedirectResponse(url=f"{settings.FRONTEND_URL}/auth/callback?{qs}")

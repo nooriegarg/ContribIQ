@@ -59,15 +59,15 @@ async def collect_architecture_context(
         ):
             candidates.append((priority, path))
     candidates.sort(key=lambda item: (item[0], item[1].count("/"), item[1]))
-    selected = [path for _, path in candidates[:8]]
+    selected = [path for _, path in candidates[:20]]
     contents = await asyncio.gather(*(
         client.get_file_content(owner, repo_name, path, ref=branch) for path in selected
     ))
     sources: dict[str, str] = {}
-    remaining = 5000
+    remaining = 12000
     for path, content in zip(selected, contents):
         if content and content.strip() and remaining > 0:
-            excerpt = _excerpt(path, content, min(800, remaining))
+            excerpt = _excerpt(path, content, min(1200, remaining))
             sources[path] = excerpt
             remaining -= len(excerpt)
     if not any(PurePosixPath(path).suffix in _SOURCE_SUFFIXES for path in sources):

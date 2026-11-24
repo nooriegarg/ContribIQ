@@ -21,6 +21,7 @@ from backend.services.valkey_client import get_key
 from backend.worker.broker import broker
 from backend.worker.tasks.analyze import analyze_repository
 from backend.worker.tasks.generate_diagram import generate_diagram
+from backend.services.valkey_client import get_key, set_key
 
 logger = logging.getLogger(__name__)
 
@@ -146,6 +147,12 @@ async def start_diagram(
     data = result.return_value or {}
     if not data.get("owner") or not data.get("repo"):
         raise HTTPException(status_code=400, detail="Repository identity is missing. Run a new analysis.")
+
+    cache_key = f"diagram:{task_id}"
+    cached = await get_key(cache_key)
+    if cached:
+        return {"diagram_task_id": cached}
+
     settings = get_settings()
     github_token = await get_key(f"gh-token:{current_user.id}") or settings.GITHUB_TOKEN
     task = await generate_diagram.kiq(
@@ -155,6 +162,7 @@ async def start_diagram(
         tech_stack=data.get("tech_stack", []),
         github_token=github_token,
     )
+    await set_key(cache_key, task.task_id, ttl=86400)
     return {"diagram_task_id": task.task_id}
 
 

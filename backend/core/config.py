@@ -15,6 +15,7 @@ class Settings(BaseSettings):
     GITHUB_CLIENT_ID: str
     GITHUB_CLIENT_SECRET: str
     GITHUB_TOKEN: str | None = None
+
     # Application URLs
     FRONTEND_URL: str
     BACKEND_URL: str = "http://localhost:8000"

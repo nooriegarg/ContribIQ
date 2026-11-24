@@ -1,5 +1,6 @@
 from typing import Any
 
+from backend.core.config import get_settings
 from backend.services.ai_service import generate_mermaid_diagram
 from backend.services.architecture_service import collect_architecture_context
 from backend.services.github_client import GitHubClient
@@ -14,6 +15,7 @@ async def generate_diagram(
     tech_stack: list[str],
     github_token: str | None = None,
 ) -> dict[str, Any]:
+    github_token = get_settings().GITHUB_TOKEN
     async with GitHubClient(token=github_token) as client:
         source_files, file_paths = await collect_architecture_context(client, owner, repo_name)
     mermaid_syntax = await generate_mermaid_diagram(

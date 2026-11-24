@@ -585,7 +585,11 @@
     /* SHARED */
     .contrib-shell .page-body {
       padding: 26px 28px 48px;
-      flex: 1
+      flex: 1;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      align-content: start;
     }
 
     .contrib-shell .eyebrow {
@@ -901,8 +905,16 @@
     .contrib-shell .arch-wrap {
       display: flex;
       justify-content: center;
+      width: 100%;
       padding: 10px 0 4px;
       overflow-x: auto
+    }
+    .contrib-shell .arch-wrap svg {
+      height: auto;
+      display: block;
+    }
+    .contrib-shell .arch-card {
+      grid-column: 1 / -1;
     }
 
     /* ONBOARDING */

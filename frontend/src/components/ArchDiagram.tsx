@@ -99,7 +99,20 @@ export default function ArchDiagram({ taskId, repoName }: ArchDiagramProps) {
     mermaid
       .render(`arch-${repoName.replace(/\W/g, '-')}-${retryCount}`, syntax)
       .then(({ svg }) => {
-        if (containerRef.current) containerRef.current.innerHTML = svg
+        if (containerRef.current) {
+          containerRef.current.innerHTML = svg
+          const svgEl = containerRef.current.querySelector('svg')
+          if (svgEl) {
+            const viewBox = svgEl.getAttribute('viewBox')
+            const naturalWidth = viewBox ? parseFloat(viewBox.split(' ')[2]) : null
+            svgEl.removeAttribute('width')
+            svgEl.removeAttribute('height')
+            svgEl.style.width = '100%'
+            svgEl.style.height = 'auto'
+            svgEl.style.display = 'block'
+            if (naturalWidth) svgEl.style.maxWidth = `${naturalWidth}px`
+          }
+        }
       })
       .catch(reason => {
         setError(reason instanceof Error ? reason.message : 'The generated diagram could not be rendered.')
@@ -113,7 +126,7 @@ export default function ArchDiagram({ taskId, repoName }: ArchDiagramProps) {
   }
 
   return (
-    <section className="card mt16">
+    <section className="card" style={{ gridColumn: 'span 2' }}>
       <h2 className="ctitle">
         <span className="ctitle-icon"><WorkflowIcon name="stack" /></span>
         Application Architecture
