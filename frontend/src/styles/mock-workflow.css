@@ -592,6 +592,10 @@
       align-content: start;
     }
 
+    .contrib-shell .profile-body > * {
+      grid-column: 1 / -1
+    }
+
     .contrib-shell .eyebrow {
       font-size: 11px;
       font-weight: 700;
@@ -752,7 +756,8 @@
     .contrib-shell .grid2 {
       display: grid;
       grid-template-columns: 1fr 1fr;
-      gap: 16px
+      gap: 24px;
+      grid-column: 1 / -1
     }
 
     .contrib-shell .grid3 {

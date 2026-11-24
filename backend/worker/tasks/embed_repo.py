@@ -1,6 +1,7 @@
 import uuid
 from typing import Any
 
+from backend.core.config import get_settings
 from backend.services.embedding_service import embed_files
 from backend.services.github_client import GitHubClient
 from backend.worker.broker import broker
@@ -21,7 +22,7 @@ async def embed_repository(
     file_tree: list[dict[str, Any]],
     github_token: str | None = None,
 ) -> dict[str, Any]:
-    async with GitHubClient(token=github_token) as client:
+    async with GitHubClient(token=github_token or get_settings().GITHUB_TOKEN) as client:
         files: dict[str, str] = {}
 
         for entry in file_tree:

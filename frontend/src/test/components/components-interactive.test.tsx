@@ -266,7 +266,7 @@ describe('IssuePreviewCard', () => {
 
   it('shows AI-suggested label when not verified', () => {
     render(<IssuePreviewCard issue={{ title: 'Fix bug', number: 1 }} verified={false} />)
-    expect(screen.getByText(/AI-suggested starting point/i)).toBeInTheDocument()
+    expect(screen.getByText(/Suggested first contribution/i)).toBeInTheDocument()
   })
 
   it('shows issue number when verified', () => {
@@ -288,7 +288,7 @@ describe('IssuePreviewCard', () => {
 
   it('shows unverified disclaimer when not verified', () => {
     render(<IssuePreviewCard issue={{ title: 'T', number: 1 }} verified={false} />)
-    expect(screen.getByText(/not been verified/i)).toBeInTheDocument()
+    expect(screen.getByText(/AI-generated suggestion/i)).toBeInTheDocument()
   })
 })
 

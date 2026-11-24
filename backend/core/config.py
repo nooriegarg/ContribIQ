@@ -14,6 +14,8 @@ class Settings(BaseSettings):
     # GitHub OAuth
     GITHUB_CLIENT_ID: str
     GITHUB_CLIENT_SECRET: str
+
+    # GitHub PAT — fallback for unauthenticated API calls (5000 req/hr vs 60)
     GITHUB_TOKEN: str | None = None
 
     # Application URLs
