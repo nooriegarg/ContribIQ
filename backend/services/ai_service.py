@@ -48,6 +48,9 @@ _DB_EVIDENCE = re.compile(
 
 def _has_db_evidence(source_files: dict[str, str]) -> bool:
     return any(_DB_EVIDENCE.search(content) for content in source_files.values())
+
+
+def _is_valid_deployment_node(label: str, source_file: str) -> bool:
     """Return True if this component looks like a real deployment boundary."""
     if _INFRA_LABEL.search(label):
         return True
