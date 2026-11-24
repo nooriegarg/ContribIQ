@@ -41,6 +41,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     sessionStorage.removeItem('token')
     sessionStorage.removeItem('refreshToken')
     sessionStorage.removeItem('user')
+    const keysToRemove = []
+    for (let i = 0; i < sessionStorage.length; i++) {
+      const key = sessionStorage.key(i)
+      if (key && (key.startsWith('analysis:') || key.startsWith('onboarding-plan-') || key.startsWith('profile:'))) {
+        keysToRemove.push(key)
+      }
+    }
+    keysToRemove.forEach(key => sessionStorage.removeItem(key))
     setToken(null)
     setUser(null)
   }, [])

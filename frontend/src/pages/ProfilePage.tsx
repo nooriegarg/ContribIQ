@@ -6,6 +6,7 @@ import ExperienceSelector from '../components/ExperienceSelector'
 import WorkflowHeader from '../components/WorkflowHeader'
 import WorkflowIcon from '../components/WorkflowIcon'
 import { useWorkflow } from '../hooks/useWorkflow'
+import { useAuth } from '../context/useAuth'
 
 const languages = [
   { value: 'python', label: 'Python' },
@@ -28,12 +29,22 @@ const interests = [
 
 export default function ProfilePage() {
   const { basePath } = useWorkflow()
+  const { user } = useAuth()
   const navigate = useNavigate()
-  const [profile, setProfile] = useState<ContributorProfile | null>(null)
-  const [languagesSelected, setLanguagesSelected] = useState<string[]>([])
-  const [interestsSelected, setInterestsSelected] = useState<string[]>([])
-  const [experience, setExperience] = useState<ContributorProfile['experience']>('beginner')
-  const [loading, setLoading] = useState(true)
+  const cacheKey = `profile:${user?.id ?? 'me'}`
+  const [profile, setProfile] = useState<ContributorProfile | null>(() => {
+    try { const c = sessionStorage.getItem(cacheKey); return c ? JSON.parse(c) : null } catch { return null }
+  })
+  const [languagesSelected, setLanguagesSelected] = useState<string[]>(() => {
+    try { const c = sessionStorage.getItem(cacheKey); return c ? JSON.parse(c).languages ?? [] : [] } catch { return [] }
+  })
+  const [interestsSelected, setInterestsSelected] = useState<string[]>(() => {
+    try { const c = sessionStorage.getItem(cacheKey); return c ? JSON.parse(c).interests ?? [] : [] } catch { return [] }
+  })
+  const [experience, setExperience] = useState<ContributorProfile['experience']>(() => {
+    try { const c = sessionStorage.getItem(cacheKey); return c ? JSON.parse(c).experience ?? 'beginner' : 'beginner' } catch { return 'beginner' }
+  })
+  const [loading, setLoading] = useState(!sessionStorage.getItem(cacheKey))
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
@@ -42,6 +53,7 @@ export default function ProfilePage() {
   const updateQueue = useRef<Promise<void>>(Promise.resolve())
 
   useEffect(() => {
+    if (profile) return
     let active = true
     setLoading(true)
     setError('')
@@ -52,6 +64,7 @@ export default function ProfilePage() {
         setLanguagesSelected(data.languages ?? [])
         setInterestsSelected(data.interests ?? [])
         setExperience(data.experience ?? 'beginner')
+        sessionStorage.setItem(cacheKey, JSON.stringify(data))
       })
       .catch(reason => { if (active) setError(reason instanceof Error ? reason.message : 'Unable to load your profile.') })
       .finally(() => { if (active) setLoading(false) })
@@ -71,6 +84,7 @@ export default function ProfilePage() {
     const request = updateQueue.current.then(async () => {
       const updated = await updateProfile({ [field]: next })
       setProfile(updated)
+      sessionStorage.setItem(cacheKey, JSON.stringify(updated))
     })
     updateQueue.current = request.then(() => undefined, () => undefined)
     try {
@@ -86,7 +100,8 @@ export default function ProfilePage() {
     setError('')
     try {
       await updateQueue.current
-      await updateProfile({ languages: languagesSelected, interests: interestsSelected, experience })
+      const updated = await updateProfile({ languages: languagesSelected, interests: interestsSelected, experience })
+      sessionStorage.setItem(cacheKey, JSON.stringify(updated))
       setNotice('Profile saved')
       navigate(`${basePath}/issues`)
     } catch (reason) {

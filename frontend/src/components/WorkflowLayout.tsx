@@ -27,8 +27,11 @@ export default function WorkflowLayout({ hero = false }: { hero?: boolean }) {
   const location = useLocation()
   const detail = useMatch('/overview/:taskId/issues/:issueNumber')
   const [menuOpen, setMenuOpen] = useState(false)
-  const [result, setResult] = useState<AnalysisResult | null>(null)
-  const [loading, setLoading] = useState(!hero)
+  const cacheKey = `analysis:${taskId}`
+  const [result, setResult] = useState<AnalysisResult | null>(() => {
+    try { const c = sessionStorage.getItem(cacheKey); return c ? JSON.parse(c) : null } catch { return null }
+  })
+  const [loading, setLoading] = useState(!hero && !sessionStorage.getItem(cacheKey))
   const [error, setError] = useState('')
   const [attempt, setAttempt] = useState(0)
   const basePath = `/overview/${encodeURIComponent(taskId)}`
@@ -38,13 +41,16 @@ export default function WorkflowLayout({ hero = false }: { hero?: boolean }) {
   const issueNumber = detail?.params.issueNumber ?? firstIssue?.number
 
   useEffect(() => {
-    if (hero || !token) return
+    if (hero || !token || result) return
     let active = true
     setLoading(true)
     setError('')
-    setResult(null)
     getAnalysisResult(taskId)
-      .then(data => { if (active) setResult(data) })
+      .then(data => {
+        if (!active) return
+        setResult(data)
+        sessionStorage.setItem(cacheKey, JSON.stringify(data))
+      })
       .catch(reason => {
         if (active) setError(reason instanceof Error ? reason.message : 'Unable to load repository analysis.')
       })
