@@ -9,14 +9,11 @@ import pytest
 
 @pytest.fixture
 def diagram(monkeypatch):
-    from backend.core import config
-
-    monkeypatch.setattr(config, "get_settings", lambda: SimpleNamespace(
-        DATABASE_URL="postgresql+asyncpg://test:test@localhost/test",
-        VALKEY_URL="redis://localhost:6379/0",
+    mod = importlib.import_module("backend.worker.tasks.generate_diagram")
+    monkeypatch.setattr(mod, "get_settings", lambda: SimpleNamespace(
         GITHUB_TOKEN="settings-gh-token",
     ))
-    return importlib.import_module("backend.worker.tasks.generate_diagram")
+    return mod
 
 
 def test_generate_diagram_has_no_github_token_parameter(diagram):

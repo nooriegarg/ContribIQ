@@ -113,6 +113,8 @@ def test_diagram_job_receives_repository_identity_for_source_collection(analysis
             "metadata": {"description": "Order processing"}, "tech_stack": ["Python"],
         },
     )))
+    monkeypatch.setattr(routes, "get_key", AsyncMock(return_value=None))
+    monkeypatch.setattr(routes, "set_key", AsyncMock())
     enqueue = AsyncMock(return_value=SimpleNamespace(task_id="diagram-task"))
     monkeypatch.setattr(routes.generate_diagram, "kiq", enqueue)
     response = client.post("/analysis/analysis-task/diagram")
