@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, fireEvent, act } from '@testing-library/react'
+import { render, screen, fireEvent } from '@testing-library/react'
 import ChipSelector from '../../components/ChipSelector'
 import Checklist from '../../components/Checklist'
 import IssueCard, { type IssueMatch } from '../../components/IssueCard'
