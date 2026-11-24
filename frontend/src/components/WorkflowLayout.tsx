@@ -77,7 +77,7 @@ export default function WorkflowLayout({ hero = false }: { hero?: boolean }) {
       setMaxStep(currentStep)
       saveProgress(taskId, currentStep)
     }
-  }, [currentStep, maxStep, taskId])
+  }, [currentStep, maxStep, taskId, hero, result, token])
 
   useEffect(() => {
     if (!user) return
@@ -146,7 +146,7 @@ export default function WorkflowLayout({ hero = false }: { hero?: boolean }) {
       })
       .finally(() => { if (active) setLoading(false) })
     return () => { active = false }
-  }, [hero, taskId, token, attempt])
+  }, [hero, taskId, token, attempt, cacheKey])
 
   if (!token) return <Navigate to="/login" replace />
 

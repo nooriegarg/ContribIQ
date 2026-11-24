@@ -43,8 +43,6 @@ export default function UserProfilePage() {
     : '/dashboard'
   const backLabel = history.length > 0 ? history[0].fullName : 'Dashboard'
 
-  if (!token) return <Navigate to="/login" replace />
-
   useEffect(() => {
     let active = true
     setLoading(true)
@@ -61,6 +59,8 @@ export default function UserProfilePage() {
       .finally(() => { if (active) setLoading(false) })
     return () => { active = false }
   }, [attempt])
+
+  if (!token) return <Navigate to="/login" replace />
 
   function handleAvatarChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
