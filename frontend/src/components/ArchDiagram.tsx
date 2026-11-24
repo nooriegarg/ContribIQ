@@ -61,7 +61,7 @@ export default function ArchDiagram({ taskId, repoName }: ArchDiagramProps) {
       clearInterval(poll)
       setError('Diagram generation timed out. Check that the worker and Ollama model are running.')
       setStatus('error')
-    }, 120000)
+    }, 180000)
     const poll = setInterval(() => {
       apiCall<{ mermaid_syntax: string; status: string; source_files?: string[] }>(`/analysis/diagram/${diagramTaskId}`)
         .then(({ mermaid_syntax, status, source_files }) => {
@@ -135,7 +135,9 @@ export default function ArchDiagram({ taskId, repoName }: ArchDiagramProps) {
       {status === 'error' && (
         <div className="notice error" role="alert">
           <p>{error}</p>
-          <button className="btn btn-s mt12" onClick={handleRetry}>Try again</button>
+          {!error.toLowerCase().includes('library') && !error.toLowerCase().includes('not enough') && (
+            <button className="btn btn-s mt12" onClick={handleRetry}>Try again</button>
+          )}
         </div>
       )}
       <div className="arch-wrap" ref={containerRef} />

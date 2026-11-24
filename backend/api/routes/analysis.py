@@ -184,7 +184,8 @@ async def get_diagram(
         return {"status": "pending", "mermaid_syntax": None}
 
     if result.is_err:
-        raise HTTPException(status_code=500, detail="Diagram generation failed")
+        detail = str(result.error) if result.error else "Diagram generation failed"
+        raise HTTPException(status_code=500, detail=detail)
 
     return result.return_value
 

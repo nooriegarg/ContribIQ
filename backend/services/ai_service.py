@@ -178,7 +178,7 @@ async def generate_mermaid_diagram(
             {"role": "user", "content": prompt},
         ],
         response_format={"type": "json_object"},
-        max_tokens=2000,
+        max_tokens=4000,
         temperature=0.2,
     )
 
@@ -187,8 +187,22 @@ async def generate_mermaid_diagram(
     match = re.search(r"\{.*\}", raw, re.DOTALL)
     if match is None:
         raise ValueError("Architecture response contained no JSON object.")
+    raw_text = match.group(0)
 
-    raw_json = json.loads(match.group(0))
+    # If JSON is truncated, attempt to salvage by closing open brackets/braces
+    try:
+        raw_json = json.loads(raw_text)
+    except json.JSONDecodeError:
+        last_close = raw_text.rfind('}')
+        if last_close > 0:
+            raw_text = raw_text[:last_close + 1]
+            open_brackets = raw_text.count('[') - raw_text.count(']')
+            open_braces = raw_text.count('{') - raw_text.count('}')
+            raw_text += ']' * max(open_brackets, 0) + '}' * max(open_braces, 0)
+        try:
+            raw_json = json.loads(raw_text)
+        except json.JSONDecodeError:
+            raise ValueError("Architecture diagram not available: this appears to be a library or framework rather than a runnable application with distinct deployment components.")
     valid_connections = []
     for conn in raw_json.get("connections", []):
         if isinstance(conn, dict):
@@ -203,11 +217,11 @@ async def generate_mermaid_diagram(
                 continue
     raw_json["connections"] = [c.model_dump() for c in valid_connections] if valid_connections else []
     if "components" not in raw_json:
-        raise ValueError(
-            f"Model returned malformed response — 'components' key missing. "
-            f"Top-level keys were: {list(raw_json.keys())[:10]}"
-        )
-    architecture = _Architecture.model_validate(raw_json)
+        raise ValueError("Architecture diagram not available: this appears to be a library or framework rather than a runnable application with distinct deployment components.")
+    try:
+        architecture = _Architecture.model_validate(raw_json)
+    except Exception:
+        raise ValueError("Architecture diagram not available: this appears to be a library or framework rather than a runnable application with distinct deployment components.")
     technology_names = {technology.casefold() for technology in tech_stack}
     db_allowed = _has_db_evidence(source_files)
     valid_components = []
@@ -226,7 +240,7 @@ async def generate_mermaid_diagram(
         valid_components.append(component)
     valid_components = valid_components[:8]
     if len(valid_components) < 2:
-        raise ValueError("Not enough deployable components found. This may be a library or framework repo rather than a runnable application.")
+        raise ValueError("Architecture diagram not available: this appears to be a library or framework rather than a runnable application with distinct deployment components.")
     identifiers = {component.id: f"N{index}" for index, component in enumerate(valid_components)}
     lines = ["graph TD"]
     for component in valid_components:
