@@ -16,6 +16,47 @@ _CONFIG_PATTERNS = re.compile(
     re.IGNORECASE,
 )
 
+# Labels that suggest a module/helper masquerading as a deployment node
+_MODULE_LABEL = re.compile(
+    r'\b(fetcher|helper|util|handler|service|manager|controller|middleware'
+    r'|parser|formatter|validator|processor|builder|factory|adapter|hook'
+    r'|component|module|class)\b',
+    re.IGNORECASE,
+)
+
+# Labels that are always legitimate external services / infra (never filtered)
+_INFRA_LABEL = re.compile(
+    r'\b(database|db|postgres|mysql|mongodb|sqlite|redis|valkey|kafka|rabbitmq'
+    r'|queue|cache|storage|s3|openai|anthropic|stripe|sendgrid|twilio'
+    r'|rapidapi|github api|youtube api|google|translate|gTTS|ffmpeg|yt.?dlp'
+    r'|worker|frontend|backend|server|api)\b',
+    re.IGNORECASE,
+)
+
+# File stems that are entry points of a process
+_ENTRY_STEMS = {'server', 'main', 'app', 'index', 'worker', 'broker', 'startup', 'program', 'run'}
+
+def _is_entry_point(source_file: str) -> bool:
+    from pathlib import PurePosixPath
+    return PurePosixPath(source_file).stem.lower() in _ENTRY_STEMS
+
+_DB_EVIDENCE = re.compile(
+    r'\b(pg|postgres|mysql|mongodb|mongoose|sqlite|prisma|sequelize|typeorm'
+    r'|sqlalchemy|create_engine|drizzle|knex|kysely)\b',
+    re.IGNORECASE,
+)
+
+def _has_db_evidence(source_files: dict[str, str]) -> bool:
+    return any(_DB_EVIDENCE.search(content) for content in source_files.values())
+    """Return True if this component looks like a real deployment boundary."""
+    if _INFRA_LABEL.search(label):
+        return True
+    if _is_entry_point(source_file):
+        return True
+    if _MODULE_LABEL.search(label):
+        return False
+    return True
+
 
 class _Component(BaseModel):
     id: _TEXT
@@ -149,6 +190,7 @@ async def generate_mermaid_diagram(
     raw_json["connections"] = [c.model_dump() for c in valid_connections] if valid_connections else []
     architecture = _Architecture.model_validate(raw_json)
     technology_names = {technology.casefold() for technology in tech_stack}
+    db_allowed = _has_db_evidence(source_files)
     valid_components = []
     for component in architecture.components:
         if component.source_file not in source_files:
@@ -157,6 +199,10 @@ async def generate_mermaid_diagram(
         if not label or label.casefold() in technology_names:
             continue
         if _CONFIG_PATTERNS.search(component.source_file) and _CONFIG_PATTERNS.search(label):
+            continue
+        if not _is_valid_deployment_node(label, component.source_file):
+            continue
+        if re.search(r'\b(database|db|postgres|mysql|mongodb|sqlite)\b', label, re.IGNORECASE) and not db_allowed:
             continue
         valid_components.append(component)
     valid_components = valid_components[:8]
