@@ -29,7 +29,7 @@ export default function AuthCallbackPage() {
       .catch(() => {
         navigate('/login?error=auth_failed', { replace: true })
       })
-  }, [])
+  }, [login, navigate, searchParams])
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-gray-950 text-white">

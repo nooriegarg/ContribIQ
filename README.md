@@ -10,6 +10,7 @@ An AI-powered open-source contributor onboarding assistant. Point it at any GitH
 
 - [Architecture](#architecture)
 - [Local Setup](#local-setup)
+- [Running Tests](#running-tests)
 - [Feature Areas](#feature-areas)
 - [Contributing](#contributing)
 - [Tech Stack Details](#tech-stack-details)
@@ -161,6 +162,67 @@ source-informed overview, not an exhaustive analysis or verified runtime trace.
 Source reads currently use public GitHub access. A repository without readable
 application source, failed source fetch, or invalid/unsupported model output
 fails explicitly instead of returning a generic technology-stack diagram.
+
+---
+
+## Running Tests
+
+### Backend
+
+Tests run with `pytest`. No database or running services are needed — all external dependencies are mocked.
+
+```bash
+# from the repo root
+python -m pytest backend/tests/ -v
+```
+
+**What is covered:**
+
+| Test file | Covers |
+|---|---|
+| `test_readiness_service.py` | All five dimension scorers + `calculate_readiness` |
+| `test_cache_service.py` | Cache key format, hit/miss, TTL enforcement |
+| `test_onboarding_service.py` | Command safety whitelist, sanitization, fallback plan, LLM mocking |
+| `test_tech_stack_service.py` | File-based tech detection, directory mapping |
+| `test_issue_detail_service.py` | PR filtering, impact chain parsing, error fallbacks |
+| `test_valkey_client.py` | `set_key`, `get_key`, `delete_key`, `key_exists` |
+| `test_jwt.py` | Access/refresh token creation and decoding |
+| `test_security.py` | bcrypt hash and verify (skipped on Python 3.14) |
+| `test_repo_service.py` | Repository metadata fetching and error handling |
+| `test_issues_matching.py` | Issue difficulty scoring and profile matching |
+| `test_github_issues.py` | GitHub issues client |
+| `test_score_issues.py` | Background scoring task |
+| `test_analysis_flow.py` | Analysis pipeline flow |
+| `test_architecture.py` | Architecture context collection |
+| `test_auth_token_type.py` | JWT token type field |
+| `test_login_rate_limit.py` | Per-client rate limiting |
+| `test_oauth_routes_registered.py` | OAuth routes registration |
+
+### Frontend
+
+Tests run with [Vitest](https://vitest.dev) + [React Testing Library](https://testing-library.com/docs/react-testing-library/intro/).
+
+```bash
+cd frontend
+npm test            # run once
+npm run test:watch  # watch mode
+npm run test:coverage  # with coverage report
+```
+
+**What is covered:**
+
+| Test file | Covers |
+|---|---|
+| `utils/format.test.ts` | `formatCount` number formatting |
+| `utils/validation.test.ts` | `validateEmail`, `parseGitHubRepository` |
+| `utils/issues.test.ts` | `getOpenIssues`, `getIssueLoadError` |
+| `api/client.test.ts` | `apiCall` — headers, auth, error handling |
+| `api/auth.test.ts` | `loginWithEmail`, `registerWithEmail`, `getGitHubOAuthUrl` |
+| `api/analyze.test.ts` | `startAnalysis`, `getAnalysisResult` |
+| `api/onboarding-profile.test.ts` | `getOnboardingPlan`, `getProfile`, `updateProfile` |
+| `context/AuthContext.test.tsx` | Login/logout state, localStorage/sessionStorage, `useAuth` guard |
+| `components/components-basic.test.tsx` | `DifficultyDots`, `MatchRing`, `ReadinessScore`, `Alert`, `WorkflowIcon`, `WorkflowHeader`, `CodeBlock`, `FileReadList`, `TechStack`, `DirectoryMap`, `TimelineSkeleton` |
+| `components/components-interactive.test.tsx` | `ChipSelector`, `Checklist`, `IssueCard`, `SimilarPRs`, `ImpactChain`, `GitHubButton`, `IssuePreviewCard`, `RepoStats`, `RepoBanner`, `ExperienceSelector` |
 
 ---
 
@@ -355,12 +417,25 @@ Multi-dimension score (0–100%) showing how prepared the contributor is to atte
 
 | Sub-feature | Status | Key files |
 |---|---|---|
-| Docker Compose file | Partial | `docker-compose.yml` defines `db` (pgvector/pgvector:pg16, health check), `valkey` (valkey/valkey:8-alpine, health check), `api`, `worker` and `frontend`. It does not define an `ollama` service, so run Ollama on the host (see Local Setup) |
-| Backend Dockerfile | **Not started** | `api` and `worker` build from `./backend` with `dockerfile: Dockerfile`, but `backend/Dockerfile` does not exist yet — multi-stage build needed |
-| Frontend Dockerfile | **Not started** | `frontend` builds from `./frontend`, but `frontend/Dockerfile` does not exist yet — Vite build + nginx serve (compose maps host port 5173 to container port 80) |
-| Makefile | **Not started** | `make dev`, `make migrate`, `make pull-model`, `make logs-api` |
+| Docker Compose file | Done | `docker-compose.yml` defines `db`, `valkey`, `api`, `worker`, `frontend`, and `ollama` services with health checks |
+| Backend Dockerfile | Done | `backend/Dockerfile` — Python 3.12-slim, installs requirements, copies source |
+| Frontend Dockerfile | Done | `frontend/Dockerfile` — multi-stage: Vite build then nginx serve |
+| nginx config | Done | `frontend/nginx.conf` — serves React SPA, proxies `/api` to backend |
+| Makefile | Done | `Makefile` — `make dev`, `make stop`, `make migrate`, `make pull-model`, `make logs-api`, `make logs-worker` |
 
-Until the Dockerfiles exist, `docker compose up` cannot build the `api`, `worker` or `frontend` images. Use the manual setup under [Local Setup](#local-setup); `docker compose up db valkey` does work for the two data services.
+Run the full stack with Docker Compose:
+
+```bash
+cp .env.example .env   # fill in SECRET_KEY and GitHub OAuth credentials
+make dev               # docker compose up --build
+make migrate           # alembic upgrade head (run once after first build)
+make pull-model        # ollama pull qwen2.5-coder:7b inside the ollama container
+```
+
+Services:
+- Frontend: `http://localhost:5173`
+- Backend API: `http://localhost:8000`
+- Swagger docs: `http://localhost:8000/docs`
 
 ---
 
@@ -370,11 +445,10 @@ The **Not started** rows, and the rows marked *not dispatched*, *not mounted* or
 
 **Suggested first contributions (smallest scope first):**
 
-1. **Dockerfiles** — add `backend/Dockerfile` and `frontend/Dockerfile` so the existing `docker-compose.yml` builds, then optionally add an `ollama` service
-2. **Mount `QAPanel`** — render `frontend/src/components/QAPanel.tsx` on a page (the backend `POST /qa/ask` already exists)
-3. **Wire the readiness score** — call `GET /analysis/result/{task_id}/readiness/{issue_number}` from the issue detail page
-4. **Dispatch the background tasks** — trigger `score_issues` (and register/dispatch `embed_repository`) from the analysis pipeline, and expose a matches endpoint for `match_issue`
-5. **Makefile** — `make dev`, `make migrate`, `make pull-model`, `make logs-api`
+1. **Mount `QAPanel`** — render `frontend/src/components/QAPanel.tsx` on a page (the backend `POST /qa/ask` already exists)
+2. **Wire the readiness score** — call `GET /analysis/result/{task_id}/readiness/{issue_number}` from the issue detail page and display `ReadinessScore`
+3. **Dispatch the background tasks** — trigger `score_issues` (and register/dispatch `embed_repository`) from the analysis pipeline, and expose a matches endpoint for `match_issue`
+4. **Fix GitHub Actions detection** — `tech_stack_service.py` routes `.github/workflows/` through the `endswith` branch instead of substring matching, so `GitHub Actions` is never detected
 
 **Before opening a PR:**
 
