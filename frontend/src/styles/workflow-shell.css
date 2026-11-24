@@ -42,10 +42,17 @@
 .contrib-shell .fr-path { overflow-wrap: anywhere; }
 .contrib-shell .tip-card { background: var(--b10); color: white; }
 .contrib-shell .tip-card p { color: var(--b4); font-size: 12.5px; line-height: 1.6; margin-top: 8px; }
-.contrib-shell .profile-body { max-width: 756px; width: 100%; }
+.contrib-shell .profile-body { max-width: 100%; width: 100%; }
+.contrib-shell .profile-grid { display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; gap: 16px; margin-top: 16px; height: calc(100vh - 310px); min-height: 400px; width: 100%; }
+.contrib-shell .profile-grid .card { margin-top: 0; display: flex; flex-direction: column; width: 100%; max-width: none; justify-self: stretch; align-self: stretch; }
+.contrib-shell .profile-grid .chip-grid { flex: 1; align-content: flex-start; }
+.contrib-shell .profile-grid .radio-row { flex: 1; }
+@media (max-width: 860px) {
+  .contrib-shell .profile-grid { grid-template-columns: 1fr; grid-template-rows: unset; height: auto; min-height: unset; }
+}
 .contrib-shell .profile-loading { padding: 16px; }
 .contrib-shell .time-choice-note { margin-top: 10px; }
-.contrib-shell .profile-controls { border: 0; min-width: 0; }
+.contrib-shell .profile-controls { border: 0; padding: 0; margin: 0; min-width: 0; width: 100%; }
 .contrib-shell .choice-radio { position: absolute; width: 1px; height: 1px; opacity: 0; }
 .contrib-shell .radio-card:focus-within { outline: 3px solid var(--b6); outline-offset: 3px; }
 .contrib-shell .rc-icon, .contrib-shell .rc-lbl, .contrib-shell .rc-sub { display: block; }
