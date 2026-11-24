@@ -14,6 +14,20 @@ export interface WorkflowContext {
   result: AnalysisResult | null
 }
 
+const PROGRESS_KEY = (id: string) => `contribiq:progress:${id}`
+
+function loadProgress(taskId: string): number {
+  try {
+    const val = parseInt(localStorage.getItem(PROGRESS_KEY(taskId)) ?? '1', 10)
+    return isNaN(val) ? 1 : Math.max(1, val)
+  }
+  catch { return 1 /* parse error or storage unavailable */ }
+}
+
+function saveProgress(taskId: string, step: number) {
+  try { localStorage.setItem(PROGRESS_KEY(taskId), String(step)) } catch { /* storage unavailable */ }
+}
+
 const steps = [
   { title: 'Repository Overview', subtitle: 'Understand the project', suffix: '' },
   { title: 'Onboarding Path', subtitle: 'Your first 30 minutes', suffix: '/onboarding' },
@@ -44,8 +58,16 @@ export default function WorkflowLayout({ hero = false }: { hero?: boolean }) {
   const basePath = `/overview/${encodeURIComponent(taskId)}`
   const currentStep = detail ? 5 : location.pathname.endsWith('/issues') ? 4
     : location.pathname.endsWith('/profile') ? 3 : location.pathname.endsWith('/onboarding') ? 2 : 1
+  const [maxStep, setMaxStep] = useState<number>(() => loadProgress(taskId))
   const firstIssue = result ? getOpenIssues(result)[0] : undefined
   const issueNumber = detail?.params.issueNumber ?? firstIssue?.number
+
+  useEffect(() => {
+    if (currentStep > maxStep) {
+      setMaxStep(currentStep)
+      saveProgress(taskId, currentStep)
+    }
+  }, [currentStep, maxStep, taskId])
 
   useEffect(() => {
     if (!hero) {
@@ -136,9 +158,11 @@ export default function WorkflowLayout({ hero = false }: { hero?: boolean }) {
             </div>
             <nav className="sb-steps" aria-label="Workflow steps">
               {steps.map((step, index) => {
-                const disabled = !result || (index === 4 && !issueNumber)
-                const content = <><span className="sb-dot">{index + 1 < currentStep ? <WorkflowIcon name="check" /> : index + 1}</span><span><span className="sb-lbl">{step.title}</span><span className="sb-sub">{step.subtitle}</span></span></>
-                const className = `sb-step${currentStep === index + 1 ? ' active' : index + 1 < currentStep ? ' done' : ''}`
+                const disabled = !result || (index + 1 > maxStep + 1) || (index === 4 && !issueNumber)
+                const isDone = index + 1 <= maxStep && index + 1 !== currentStep
+                const isActive = index + 1 === currentStep
+                const content = <><span className="sb-dot">{isDone ? <WorkflowIcon name="check" /> : index + 1}</span><span><span className="sb-lbl">{step.title}</span><span className="sb-sub">{step.subtitle}</span></span></>
+                const className = `sb-step${isActive ? ' active' : isDone ? ' done' : ''}`
                 return disabled ? (
                   <span className={`${className} locked`} aria-disabled="true" key={step.title}>{content}</span>
                 ) : (
