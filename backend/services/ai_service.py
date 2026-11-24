@@ -43,8 +43,8 @@ class _Connection(BaseModel):
 
 
 class _Architecture(BaseModel):
-    components: list[_Component] = Field(min_length=2, max_length=8)
-    connections: list[_Connection] = Field(min_length=0, max_length=15)
+    components: list[_Component] = Field(min_length=1, max_length=20)
+    connections: list[_Connection] = Field(min_length=0, max_length=30)
 
 
 def _sanitize_for_mermaid(text: str) -> str:
@@ -159,8 +159,9 @@ async def generate_mermaid_diagram(
         if _CONFIG_PATTERNS.search(component.source_file) and _CONFIG_PATTERNS.search(label):
             continue
         valid_components.append(component)
+    valid_components = valid_components[:8]
     if len(valid_components) < 2:
-        raise ValueError("Not enough valid architecture components to render a diagram.")
+        raise ValueError("Not enough deployable components found. This may be a library or framework repo rather than a runnable application.")
     identifiers = {component.id: f"N{index}" for index, component in enumerate(valid_components)}
     lines = ["graph TD"]
     for component in valid_components:
