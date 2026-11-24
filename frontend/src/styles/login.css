@@ -35,7 +35,7 @@
 .brand-tag  { font-size: 11px; color: var(--b4); margin-top: 1px; }
 
 /* Card */
-.card {
+.login-page .card {
   width: 100%;
   max-width: 420px;
   background: rgba(255, 255, 255, 0.04);
@@ -278,6 +278,6 @@
 .trust-item svg { width: 13px; height: 13px; fill: rgba(255, 255, 255, 0.3); }
 
 @media (max-width: 480px) {
-  .card { padding: 28px 22px 24px; border-radius: 16px; }
+  .login-page .card { padding: 28px 22px 24px; border-radius: 16px; }
   .card-title { font-size: 20px; }
 }

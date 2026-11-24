@@ -96,29 +96,26 @@ async def generate_mermaid_diagram(
     if match is None:
         raise ValueError("Architecture response contained no JSON object.")
     architecture = _Architecture.model_validate_json(match.group(0))
-    identifiers = {component.id: f"N{index}" for index, component in enumerate(architecture.components)}
-    if len(identifiers) != len(architecture.components):
-        raise ValueError("Architecture components must have unique identifiers.")
     technology_names = {technology.casefold() for technology in tech_stack}
-    lines = ["graph TD"]
+    valid_components = []
     for component in architecture.components:
         if component.source_file not in source_files:
-            raise ValueError("Architecture component references an unread source file.")
+            continue
         label = _sanitize_for_mermaid(component.label)
         if not label or label.casefold() in technology_names:
-            raise ValueError("Architecture nodes must describe application roles, not standalone technologies.")
-        lines.append(f'    {identifiers[component.id]}["{label}"]')
-    connected = set()
+            continue
+        valid_components.append(component)
+    if len(valid_components) < 2:
+        raise ValueError("Not enough valid architecture components to render a diagram.")
+    identifiers = {component.id: f"N{index}" for index, component in enumerate(valid_components)}
+    lines = ["graph TD"]
+    for component in valid_components:
+        lines.append(f'    {identifiers[component.id]}["{_sanitize_for_mermaid(component.label)}"]')
     for connection in architecture.connections:
         if connection.source not in identifiers or connection.target not in identifiers:
-            raise ValueError("Architecture connection references an unknown component.")
-        if connection.source_file not in source_files:
-            raise ValueError("Architecture connection references an unread source file.")
+            continue
         label = _sanitize_for_mermaid(connection.label)
         if not label:
-            raise ValueError("Architecture connections must describe a relationship.")
-        connected.update((connection.source, connection.target))
+            continue
         lines.append(f'    {identifiers[connection.source]} -->|{label}| {identifiers[connection.target]}')
-    if connected != identifiers.keys():
-        raise ValueError("Every architecture component must have an evidenced connection.")
     return "\n".join(lines)
