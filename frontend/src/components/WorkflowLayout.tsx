@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
-import { Link, Navigate, Outlet, useLocation, useMatch, useParams } from 'react-router-dom'
+import { Link, Navigate, Outlet, useLocation, useMatch, useNavigate, useParams } from 'react-router-dom'
 import { getAnalysisResult, type AnalysisResult } from '../api/analyze'
 import { useAuth } from '../context/useAuth'
+import { getRepoHistory, type RepoHistoryEntry } from '../hooks/useAnalysis'
 import WorkflowIcon from './WorkflowIcon'
 import { getOpenIssues } from '../utils/issues'
 import '../styles/mock-workflow.css'
@@ -21,21 +22,72 @@ const steps = [
   { title: 'Issue Deep-Dive', subtitle: 'Understand & contribute', suffix: '/issues' },
 ]
 
+function isAnalysisReady(taskId: string) {
+  return !!sessionStorage.getItem(`arch-${taskId}`)
+}
+
 export default function WorkflowLayout({ hero = false }: { hero?: boolean }) {
   const { taskId = '' } = useParams()
   const { token, user, logout } = useAuth()
   const location = useLocation()
+  const navigate = useNavigate()
   const detail = useMatch('/overview/:taskId/issues/:issueNumber')
   const [menuOpen, setMenuOpen] = useState(false)
   const [result, setResult] = useState<AnalysisResult | null>(null)
   const [loading, setLoading] = useState(!hero)
   const [error, setError] = useState('')
   const [attempt, setAttempt] = useState(0)
+  const [history, setHistory] = useState<RepoHistoryEntry[]>([])
+  const [switcherOpen, setSwitcherOpen] = useState(false)
+  const [switchBlocked, setSwitchBlocked] = useState(false)
+  const [analysisReady, setAnalysisReady] = useState(() => !hero && isAnalysisReady(taskId))
   const basePath = `/overview/${encodeURIComponent(taskId)}`
   const currentStep = detail ? 5 : location.pathname.endsWith('/issues') ? 4
     : location.pathname.endsWith('/profile') ? 3 : location.pathname.endsWith('/onboarding') ? 2 : 1
   const firstIssue = result ? getOpenIssues(result)[0] : undefined
   const issueNumber = detail?.params.issueNumber ?? firstIssue?.number
+
+  useEffect(() => {
+    if (!hero) {
+      setHistory(getRepoHistory())
+      setAnalysisReady(isAnalysisReady(taskId))
+    }
+  }, [hero, taskId])
+
+  // Poll until both sessionStorage keys are set so the switcher unlocks reactively
+  useEffect(() => {
+    if (hero || analysisReady) return
+    const interval = setInterval(() => {
+      if (isAnalysisReady(taskId)) {
+        setAnalysisReady(true)
+        clearInterval(interval)
+      }
+    }, 1500)
+    return () => clearInterval(interval)
+  }, [hero, taskId, analysisReady])
+
+  function handleSwitchRepo(entry: RepoHistoryEntry) {
+    setSwitcherOpen(false)
+    setMenuOpen(false)
+    navigate(`/overview/${encodeURIComponent(entry.taskId)}`)
+  }
+
+  function handleSwitchAttempt(entry: RepoHistoryEntry) {
+    if (!analysisReady) {
+      setSwitcherOpen(false)
+      setSwitchBlocked(true)
+      return
+    }
+    handleSwitchRepo(entry)
+  }
+
+  function handleNewRepoAttempt(e: React.MouseEvent) {
+    if (!analysisReady) {
+      e.preventDefault()
+      setSwitcherOpen(false)
+      setSwitchBlocked(true)
+    }
+  }
 
   useEffect(() => {
     if (hero || !token) return
@@ -97,7 +149,47 @@ export default function WorkflowLayout({ hero = false }: { hero?: boolean }) {
               })}
             </nav>
             <footer className="sb-footer">
-              <Link className="sb-new-repo" to="/dashboard">Analyze another repository</Link>
+              {history.length > 1 ? (
+                <div className="sb-switcher">
+                  <button
+                    className={`sb-switcher-btn${!analysisReady ? ' locked' : ''}`}
+                    onClick={() => analysisReady ? setSwitcherOpen(o => !o) : setSwitchBlocked(true)}
+                    aria-expanded={switcherOpen}
+                    aria-haspopup="listbox"
+                    title={!analysisReady ? 'Wait for analysis to complete before switching' : undefined}
+                  >
+                    <span className="sb-switcher-label">
+                      {!analysisReady && <span className="sb-switcher-lock" aria-hidden="true">⏳</span>}
+                      Switch repository
+                    </span>
+                    <span className={`sb-switcher-arrow${switcherOpen ? ' open' : ''}`}><WorkflowIcon name="arrow" /></span>
+                  </button>
+                  {switcherOpen && analysisReady && (
+                    <ul className="sb-switcher-menu" role="listbox" aria-label="Previously analyzed repositories">
+                      {history.map(entry => (
+                        <li key={entry.taskId} role="option" aria-selected={entry.taskId === taskId}>
+                          <button
+                            className={`sb-switcher-item${entry.taskId === taskId ? ' current' : ''}`}
+                            onClick={() => handleSwitchAttempt(entry)}
+                            disabled={entry.taskId === taskId}
+                          >
+                            {entry.fullName}
+                            {entry.taskId === taskId && <span className="sb-switcher-badge">current</span>}
+                          </button>
+                        </li>
+                      ))}
+                      <li role="option" aria-selected={false}>
+                        <Link className="sb-switcher-item sb-switcher-new" to="/dashboard"
+                          onClick={(e) => { handleNewRepoAttempt(e); if (analysisReady) { setSwitcherOpen(false); setMenuOpen(false) } }}>
+                          + Analyze new repository
+                        </Link>
+                      </li>
+                    </ul>
+                  )}
+                </div>
+              ) : (
+                <Link className="sb-new-repo" to="/dashboard" onClick={handleNewRepoAttempt}>Analyze another repository</Link>
+              )}
               <p>AI-powered open-source contributor onboarding.</p>
               <button className="sb-signout" onClick={logout}>Sign out</button>
             </footer>
@@ -109,6 +201,18 @@ export default function WorkflowLayout({ hero = false }: { hero?: boolean }) {
           : error ? <div className="workflow-state" role="alert"><h1>Unable to load analysis</h1><p>{error}</p><button className="btn btn-p" onClick={() => setAttempt(attempt + 1)}>Try again</button><Link className="btn btn-s" to="/dashboard">Back to dashboard</Link></div>
             : <Outlet context={{ taskId, basePath, result } satisfies WorkflowContext} />}
       </main>
+      {switchBlocked && (
+        <div className="switch-block-overlay" role="dialog" aria-modal="true" aria-labelledby="switch-block-title" onClick={() => setSwitchBlocked(false)}>
+          <div className="switch-block-modal" onClick={e => e.stopPropagation()}>
+            <div className="switch-block-icon" aria-hidden="true">⏳</div>
+            <h2 className="switch-block-title" id="switch-block-title">Analysis still in progress</h2>
+            <p className="switch-block-desc">
+              Please wait for the analysis to complete before switching repositories.
+            </p>
+            <button className="btn btn-p" onClick={() => setSwitchBlocked(false)} autoFocus>Got it</button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

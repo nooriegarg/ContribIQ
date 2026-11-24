@@ -122,6 +122,31 @@
   .contrib-shell .rb-icon { display: none; }
   .contrib-shell .badge { padding: 3px 7px; font-size: 10px; }
 }
+.contrib-shell .sb-switcher { position: relative; margin-bottom: 12px; }
+.contrib-shell .sb-switcher-btn { display: flex; align-items: center; justify-content: space-between; width: 100%; background: rgba(255,255,255,.07); border: 1px solid rgba(255,255,255,.12); border-radius: 7px; padding: 7px 10px; color: var(--b4); font-size: 12px; cursor: pointer; gap: 8px; }
+.contrib-shell .sb-switcher-btn:hover { background: rgba(255,255,255,.12); color: white; }
+.contrib-shell .sb-switcher-btn.locked { opacity: .65; cursor: not-allowed; }
+.contrib-shell .sb-switcher-btn.locked:hover { background: rgba(255,255,255,.07); color: var(--b4); }
+.contrib-shell .sb-switcher-lock { margin-right: 5px; font-style: normal; }
+.contrib-shell .sb-switcher-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: flex; align-items: center; }
+.contrib-shell .sb-switcher-arrow { display: flex; align-items: center; flex-shrink: 0; transition: transform .15s; transform: rotate(90deg); }
+.contrib-shell .sb-switcher-arrow svg { width: 12px; height: 12px; }
+.contrib-shell .sb-switcher-arrow.open { transform: rotate(270deg); }
+.contrib-shell .sb-switcher-menu { position: absolute; bottom: calc(100% + 6px); left: 0; right: 0; background: var(--b10); border: 1px solid rgba(255,255,255,.12); border-radius: 8px; overflow: hidden; list-style: none; z-index: 50; box-shadow: 0 8px 24px rgba(0,0,0,.35); }
+.contrib-shell .sb-switcher-item { display: flex; align-items: center; justify-content: space-between; gap: 8px; width: 100%; text-align: left; padding: 9px 12px; font-size: 12px; color: var(--b4); background: transparent; border: 0; cursor: pointer; overflow-wrap: anywhere; }
+.contrib-shell .sb-switcher-item:hover:not(:disabled) { background: rgba(255,255,255,.07); color: white; }
+.contrib-shell .sb-switcher-item.current { color: var(--b6); cursor: default; }
+.contrib-shell .sb-switcher-item.sb-switcher-new { color: var(--b5); font-weight: 600; border-top: 1px solid rgba(255,255,255,.08); text-decoration: none; }
+.contrib-shell .sb-switcher-item.sb-switcher-new:hover { color: white; background: rgba(255,255,255,.07); }
+.contrib-shell .sb-switcher-badge { font-size: 10px; padding: 2px 6px; border-radius: 4px; background: rgba(99,139,255,.2); color: var(--b6); white-space: nowrap; flex-shrink: 0; }
+/* Switch-blocked popup */
+.switch-block-overlay { position: fixed; inset: 0; z-index: 300; background: rgba(0,10,40,.6); backdrop-filter: blur(3px); display: flex; align-items: center; justify-content: center; padding: 24px; }
+.switch-block-modal { background: white; border-radius: 16px; padding: 36px 32px 28px; max-width: 380px; width: 100%; text-align: center; box-shadow: 0 24px 60px rgba(0,0,0,.3); animation: sbm-in .18s ease; }
+@keyframes sbm-in { from { opacity: 0; transform: translateY(10px) scale(.97); } to { opacity: 1; transform: none; } }
+.switch-block-icon { font-size: 40px; margin-bottom: 14px; }
+.switch-block-title { font-size: 18px; font-weight: 700; color: var(--b10); margin-bottom: 10px; }
+.switch-block-desc { font-size: 13.5px; color: var(--gd); line-height: 1.65; margin-bottom: 24px; }
 @media (prefers-reduced-motion: reduce) {
-  .contrib-shell *, .contrib-shell *::before, .contrib-shell *::after { animation: none !important; transition: none !important; }
+  .contrib-shell .sb-switcher-arrow { transition: none; }
+  .switch-block-modal { animation: none; }
 }

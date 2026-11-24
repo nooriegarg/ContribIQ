@@ -23,6 +23,30 @@ interface UseAnalysisActions {
   reset: () => void
 }
 
+export interface RepoHistoryEntry {
+  taskId: string
+  fullName: string
+  analyzedAt: string
+}
+
+const HISTORY_KEY = 'contribiq_repo_history'
+const MAX_HISTORY = 10
+
+export function getRepoHistory(): RepoHistoryEntry[] {
+  try {
+    return JSON.parse(localStorage.getItem(HISTORY_KEY) ?? '[]') as RepoHistoryEntry[]
+  } catch {
+    return []
+  }
+}
+
+function saveToHistory(taskId: string, result: AnalysisResult) {
+  const fullName = result.metadata.full_name || `${result.owner}/${result.repo}`
+  const entry: RepoHistoryEntry = { taskId, fullName, analyzedAt: new Date().toISOString() }
+  const existing = getRepoHistory().filter(e => e.taskId !== taskId)
+  localStorage.setItem(HISTORY_KEY, JSON.stringify([entry, ...existing].slice(0, MAX_HISTORY)))
+}
+
 export function useAnalysis(): UseAnalysisState & UseAnalysisActions {
   const [state, setState] = useState<UseAnalysisState>({
     status: 'idle',
@@ -34,6 +58,7 @@ export function useAnalysis(): UseAnalysisState & UseAnalysisActions {
 
   const esRef = useRef<AbortController | null>(null)
   const generationRef = useRef(0)
+  const taskIdRef = useRef<string | null>(null)
 
   useEffect(() => () => {
     generationRef.current++
@@ -52,6 +77,7 @@ export function useAnalysis(): UseAnalysisState & UseAnalysisActions {
       },
       (result) => {
         if (generation !== generationRef.current) return
+        if (taskIdRef.current) saveToHistory(taskIdRef.current, result)
         setState((prev) => ({ ...prev, status: 'done', result }))
       },
       (error) => {
@@ -65,10 +91,12 @@ export function useAnalysis(): UseAnalysisState & UseAnalysisActions {
     async (owner: string, repo: string, githubToken?: string) => {
       const generation = ++generationRef.current
       esRef.current?.abort()
+      taskIdRef.current = null
       setState({ status: 'starting', taskId: null, steps: [], result: null, error: null })
       try {
         const { task_id } = await startAnalysis({ owner, repo, github_token: githubToken })
         if (generation !== generationRef.current) return
+        taskIdRef.current = task_id
         setState((prev) => ({ ...prev, status: 'running', taskId: task_id }))
         subscribe(task_id)
       } catch (err) {
