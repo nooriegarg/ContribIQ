@@ -17,12 +17,24 @@ export default function OnboardingPage() {
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
+    const cacheKey = `onboarding-plan-${taskId}`
+    const cached = sessionStorage.getItem(cacheKey)
+    if (cached && attempt === 0) {
+      setPlan(JSON.parse(cached))
+      setIsLoading(false)
+      return
+    }
+
     let active = true
     setPlan(null)
     setError('')
     setIsLoading(true)
     getOnboardingPlan(taskId)
-      .then(data => { if (active) setPlan(data) })
+      .then(data => {
+        if (!active) return
+        sessionStorage.setItem(cacheKey, JSON.stringify(data))
+        setPlan(data)
+      })
       .catch(reason => { if (active) setError(reason instanceof Error ? reason.message : 'Unable to load onboarding plan.')})
       .finally(() => { if (active) setIsLoading(false) })
     return () => { active = false }
@@ -41,7 +53,7 @@ export default function OnboardingPage() {
             : <div className="grid2">
               <section>
                 <div className="section-intro"><p className="eyebrow">First {plan.estimated_minutes} Minutes</p><h2 className="pg-title">Your action plan</h2><p className="pg-desc">Complete these steps in order to understand the project before writing any code.</p></div>
-                <Timeline steps={plan.steps} />
+                <Timeline steps={plan.steps} storageKey={taskId} />
               </section>
               <aside>
                 <div className="section-intro"><p className="eyebrow">Your First Contribution</p><h2 className="pg-title">Issue preview</h2><p className="pg-desc">A starting point to explore after your environment is ready.</p></div>

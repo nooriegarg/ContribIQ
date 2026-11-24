@@ -13,6 +13,7 @@ async def generate_diagram(
     repo_name: str,
     description: str | None,
     tech_stack: list[str],
+    github_token: str | None = None,
 ) -> dict[str, Any]:
     github_token = get_settings().GITHUB_TOKEN
     async with GitHubClient(token=github_token) as client:

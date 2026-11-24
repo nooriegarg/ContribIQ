@@ -164,6 +164,9 @@ async def github_callback(
     await db.commit()
     await db.refresh(user)
 
+    # cache the GitHub OAuth token so background tasks can make authenticated API calls
+    await set_key(f"gh-token:{user.id}", github_token, ttl=86400)
+
     # redirect to frontend SPA — tokens in query params, frontend stores them
     access_token = create_access_token(user.id)
     refresh_token = create_refresh_token(user.id)
