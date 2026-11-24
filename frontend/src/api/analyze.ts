@@ -48,10 +48,11 @@ export async function startAnalysis(req: AnalysisRequest): Promise<{ task_id: st
   const timeout = setTimeout(() => controller.abort(
     new Error('Submitting analysis timed out. Check that the API and Valkey are running, then try again.'),
   ), 15000)
+  const githubToken = localStorage.getItem('github_token')
   try {
     return await apiCall<{ task_id: string }>('/analysis/start', {
       method: 'POST',
-      body: JSON.stringify(req),
+      body: JSON.stringify({ ...req, github_token: githubToken ?? undefined }),
       signal: controller.signal,
     })
   } finally {

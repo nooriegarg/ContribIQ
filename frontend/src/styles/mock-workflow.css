@@ -903,15 +903,14 @@
 
     /* ARCHITECTURE SVG */
     .contrib-shell .arch-wrap {
-      display: block;
+      display: flex;
+      justify-content: center;
       width: 100%;
       padding: 10px 0 4px;
       overflow-x: auto
     }
     .contrib-shell .arch-wrap svg {
-      width: 100% !important;
-      height: auto !important;
-      min-height: 300px;
+      height: auto;
       display: block;
     }
     .contrib-shell .arch-card {

@@ -93,12 +93,14 @@ export default function ArchDiagram({ taskId, repoName }: ArchDiagramProps) {
           containerRef.current.innerHTML = svg
           const svgEl = containerRef.current.querySelector('svg')
           if (svgEl) {
-            svgEl.style.width = '100%'
-            svgEl.style.height = 'auto'
-            svgEl.style.maxWidth = '100%'
-            svgEl.style.minHeight = '300px'
+            const viewBox = svgEl.getAttribute('viewBox')
+            const naturalWidth = viewBox ? parseFloat(viewBox.split(' ')[2]) : null
             svgEl.removeAttribute('width')
             svgEl.removeAttribute('height')
+            svgEl.style.width = '100%'
+            svgEl.style.height = 'auto'
+            svgEl.style.display = 'block'
+            if (naturalWidth) svgEl.style.maxWidth = `${naturalWidth}px`
           }
         }
       })

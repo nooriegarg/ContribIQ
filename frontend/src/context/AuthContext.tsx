@@ -37,6 +37,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     localStorage.removeItem('token')
     localStorage.removeItem('refreshToken')
     localStorage.removeItem('user')
+    localStorage.removeItem('github_token')
     sessionStorage.removeItem('token')
     sessionStorage.removeItem('refreshToken')
     sessionStorage.removeItem('user')

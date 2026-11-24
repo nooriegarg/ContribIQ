@@ -14,6 +14,11 @@ export default function AuthCallbackPage() {
       return
     }
 
+    const githubToken = searchParams.get('github_token')
+    if (githubToken) {
+      localStorage.setItem('github_token', githubToken)
+    }
+
     const base = import.meta.env.VITE_API_URL ?? 'http://localhost:8000'
     fetch(`${base}/auth/me`, {
       headers: { Authorization: `Bearer ${token}` },
