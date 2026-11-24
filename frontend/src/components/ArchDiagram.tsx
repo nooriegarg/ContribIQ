@@ -133,12 +133,16 @@ export default function ArchDiagram({ taskId, repoName }: ArchDiagramProps) {
       </h2>
       {status === 'generating' && <p className="muted" role="status">Reading repository source and generating application architecture...</p>}
       {status === 'error' && (
-        <div className="notice error" role="alert">
-          <p>{error}</p>
-          {!error.toLowerCase().includes('library') && !error.toLowerCase().includes('not enough') && (
+        (error.toLowerCase().includes('library') || error.toLowerCase().includes('not enough')) ? (
+          <div className="notice" role="status">
+            <p>This is a framework or library repo — architecture diagrams apply to applications <em>built with</em> {repoName.split('/')[1] ?? repoName}, not the framework itself.</p>
+          </div>
+        ) : (
+          <div className="notice error" role="alert">
+            <p>{error}</p>
             <button className="btn btn-s mt12" onClick={handleRetry}>Try again</button>
-          )}
-        </div>
+          </div>
+        )
       )}
       <div className="arch-wrap" ref={containerRef} />
       {status === 'done' && sourceFiles.length > 0 && <p className="muted mt12">Inferred from {sourceFiles.join(', ')}. Shows application components and connections, not a verified runtime trace.</p>}
