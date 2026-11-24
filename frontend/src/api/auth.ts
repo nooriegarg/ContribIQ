@@ -65,6 +65,18 @@ export async function registerWithEmail(payload: {
   return getAuthenticatedUser(data.access_token, data.refresh_token)
 }
 
+export async function updateCurrentUser(payload: { name?: string; email?: string }): Promise<{ id: string; email: string; name: string }> {
+  const data = await apiCall<BackendUser>('/auth/me', {
+    method: 'PATCH',
+    body: JSON.stringify(payload),
+  })
+  return {
+    id: data.id,
+    email: data.email,
+    name: data.name ?? data.email.split('@')[0],
+  }
+}
+
 export async function requestPasswordReset(_email: string): Promise<void> {
   void _email
   throw new Error('Password reset is currently unavailable.')

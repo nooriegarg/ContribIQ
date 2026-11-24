@@ -1,5 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { render, screen } from '@testing-library/react'
+import { MemoryRouter } from 'react-router-dom'
+import { AuthProvider } from '../../context/AuthContext'
 import DifficultyDots from '../../components/DifficultyDots'
 import MatchRing from '../../components/MatchRing'
 import ReadinessScore from '../../components/ReadinessScore'
@@ -11,6 +13,16 @@ import FileReadList from '../../components/FileReadList'
 import TechStack from '../../components/TechStack'
 import DirectoryMap from '../../components/DirectoryMap'
 import TimelineSkeleton from '../../components/TimelineSkeleton'
+
+function renderHeader(props: React.ComponentProps<typeof WorkflowHeader>) {
+  return render(
+    <MemoryRouter>
+      <AuthProvider>
+        <WorkflowHeader {...props} />
+      </AuthProvider>
+    </MemoryRouter>
+  )
+}
 
 // ─── DifficultyDots ───────────────────────────────────────────────────────────
 
@@ -152,23 +164,23 @@ describe('WorkflowIcon', () => {
 
 describe('WorkflowHeader', () => {
   it('renders title and subtitle', () => {
-    render(<WorkflowHeader title="Overview" subtitle="Understand the project" step={1} />)
+    renderHeader({ title: 'Overview', subtitle: 'Understand the project', step: 1 })
     expect(screen.getByText('Overview')).toBeInTheDocument()
     expect(screen.getByText('Understand the project')).toBeInTheDocument()
   })
 
   it('renders step badge', () => {
-    render(<WorkflowHeader title="T" subtitle="S" step={3} />)
+    renderHeader({ title: 'T', subtitle: 'S', step: 3 })
     expect(screen.getByText('Step 3 of 5')).toBeInTheDocument()
   })
 
   it('shows analysis complete badge when complete=true', () => {
-    render(<WorkflowHeader title="T" subtitle="S" step={5} complete />)
+    renderHeader({ title: 'T', subtitle: 'S', step: 5, complete: true })
     expect(screen.getByText('Analysis complete')).toBeInTheDocument()
   })
 
   it('does not show analysis complete badge by default', () => {
-    render(<WorkflowHeader title="T" subtitle="S" step={1} />)
+    renderHeader({ title: 'T', subtitle: 'S', step: 1 })
     expect(screen.queryByText('Analysis complete')).not.toBeInTheDocument()
   })
 })

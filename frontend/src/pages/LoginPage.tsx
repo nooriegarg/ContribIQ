@@ -14,10 +14,11 @@ type View = 'login' | 'signup'
 export default function LoginPage() {
   const [view, setView]         = useState<View>('login')
   const [succeeded, setSucceeded] = useState(false)
+  const [isSignup, setIsSignup] = useState(false)
   const navigate = useNavigate()
 
   function handleRedirect() {
-    navigate('/dashboard')
+    navigate(isSignup ? '/onboarding-setup' : '/dashboard')
   }
 
   return (
@@ -29,9 +30,9 @@ export default function LoginPage() {
           {succeeded ? (
             <SuccessState onRedirectDone={handleRedirect} />
           ) : view === 'login' ? (
-            <LoginForm onSuccess={() => setSucceeded(true)} />
+            <LoginForm onSuccess={() => { setIsSignup(false); setSucceeded(true) }} />
           ) : (
-            <SignupForm onSuccess={() => setSucceeded(true)} />
+            <SignupForm onSuccess={() => { setIsSignup(true); setSucceeded(true) }} />
           )}
 
           {!succeeded && (

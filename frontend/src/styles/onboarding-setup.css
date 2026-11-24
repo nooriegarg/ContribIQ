@@ -1,0 +1,193 @@
+/* Onboarding setup wizard (post-signup) */
+.setup-page {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px 16px;
+  background: var(--b11);
+}
+
+.setup-card {
+  background: white;
+  border-radius: 20px;
+  padding: 40px 40px 32px;
+  width: 100%;
+  max-width: 560px;
+  box-shadow: 0 24px 60px rgba(0, 20, 74, 0.35);
+}
+
+.setup-header {
+  margin-bottom: 28px;
+}
+
+.setup-brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--b10);
+  font-weight: 700;
+  font-size: 15px;
+  margin-bottom: 20px;
+}
+
+.setup-brand svg {
+  width: 20px;
+  height: 20px;
+  color: var(--b6);
+}
+
+.setup-welcome {}
+
+.setup-title {
+  font-size: 24px;
+  font-weight: 800;
+  color: var(--b10);
+  margin-bottom: 6px;
+}
+
+.setup-subtitle {
+  font-size: 14px;
+  color: var(--gd);
+  line-height: 1.6;
+}
+
+/* Progress dots */
+.setup-progress {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 4px;
+}
+
+.setup-pip {
+  height: 4px;
+  flex: 1;
+  border-radius: 99px;
+  background: var(--gl);
+  transition: background .2s;
+}
+
+.setup-pip.done { background: var(--b6); }
+.setup-pip.active { background: var(--b6); opacity: .5; }
+
+.setup-step-label {
+  font-size: 11px;
+  color: var(--gm);
+  margin-bottom: 28px;
+}
+
+/* Step body */
+.setup-body {
+  min-height: 220px;
+}
+
+.setup-q {
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--b10);
+  margin-bottom: 6px;
+  line-height: 1.4;
+}
+
+.setup-hint {
+  font-size: 13px;
+  color: var(--gd);
+  line-height: 1.6;
+  margin-bottom: 20px;
+}
+
+.setup-error {
+  margin-top: 12px;
+  padding: 10px 14px;
+  background: var(--rbg);
+  border: 1px solid #efb6af;
+  border-radius: 8px;
+  color: #9c2b21;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+/* Footer */
+.setup-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 32px;
+  padding-top: 20px;
+  border-top: 1px solid var(--gl);
+  gap: 12px;
+}
+
+.setup-footer-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-left: auto;
+}
+
+.setup-skip {
+  color: var(--gd);
+  border-color: transparent;
+  background: transparent;
+}
+
+.setup-skip:hover {
+  background: var(--gl);
+  border-color: var(--gl);
+  color: var(--b10);
+}
+
+/* Reuse radio-card layout from workflow.css */
+.setup-body .radio-row {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.setup-body .radio-card {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 16px;
+  border: 1.5px solid var(--gl);
+  border-radius: 10px;
+  cursor: pointer;
+  transition: border-color .15s, background .15s;
+  user-select: none;
+}
+
+.setup-body .radio-card:hover { border-color: var(--b6); background: var(--bbg, #f0f4ff); }
+.setup-body .radio-card.sel { border-color: var(--b6); background: var(--bbg, #f0f4ff); }
+
+.setup-body .choice-radio {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+}
+
+.setup-body .rc-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  color: var(--b7);
+}
+
+.setup-body .rc-icon svg { width: 22px; height: 22px; }
+.setup-body .rc-lbl { font-size: 14px; font-weight: 700; color: var(--b10); }
+.setup-body .rc-sub { font-size: 12px; color: var(--gd); margin-left: auto; }
+
+@media (max-width: 520px) {
+  .setup-card {
+    padding: 28px 20px 24px;
+    border-radius: 16px;
+  }
+
+  .setup-title { font-size: 20px; }
+  .setup-q { font-size: 15px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .setup-pip { transition: none; }
+}

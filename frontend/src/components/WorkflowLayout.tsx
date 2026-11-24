@@ -3,10 +3,15 @@ import { Link, Navigate, Outlet, useLocation, useMatch, useNavigate, useParams }
 import { getAnalysisResult, type AnalysisResult } from '../api/analyze'
 import { useAuth } from '../context/useAuth'
 import { getRepoHistory, type RepoHistoryEntry } from '../hooks/useAnalysis'
+import Avatar from './Avatar'
 import WorkflowIcon from './WorkflowIcon'
 import { getOpenIssues } from '../utils/issues'
 import '../styles/mock-workflow.css'
 import '../styles/workflow-shell.css'
+
+export function getAvatarUrl(userId: string) {
+  return localStorage.getItem(`avatar-${userId}`) ?? null
+}
 
 export interface WorkflowContext {
   taskId: string
@@ -58,6 +63,7 @@ export default function WorkflowLayout({ hero = false }: { hero?: boolean }) {
   const [switcherOpen, setSwitcherOpen] = useState(false)
   const [switchBlocked, setSwitchBlocked] = useState(false)
   const [analysisReady, setAnalysisReady] = useState(() => !hero && isAnalysisReady(taskId))
+  const [avatarUrl, setAvatarUrl] = useState(() => user ? getAvatarUrl(user.id) : null)
   const basePath = `/overview/${encodeURIComponent(taskId)}`
   const currentStep = detail ? 5 : location.pathname.endsWith('/issues') ? 4
     : location.pathname.endsWith('/profile') ? 3 : location.pathname.endsWith('/onboarding') ? 2 : 1
@@ -72,6 +78,15 @@ export default function WorkflowLayout({ hero = false }: { hero?: boolean }) {
       saveProgress(taskId, currentStep)
     }
   }, [currentStep, maxStep, taskId])
+
+  useEffect(() => {
+    if (!user) return
+    function onStorage(e: StorageEvent) {
+      if (e.key === `avatar-${user!.id}`) setAvatarUrl(e.newValue)
+    }
+    window.addEventListener('storage', onStorage)
+    return () => window.removeEventListener('storage', onStorage)
+  }, [user])
 
   useEffect(() => {
     if (!hero) {
@@ -143,7 +158,13 @@ export default function WorkflowLayout({ hero = false }: { hero?: boolean }) {
             <span className="sb-brand-icon"><WorkflowIcon name="cube" /></span>
             <span className="sb-brand-name">ContribIQ</span>
           </Link>
-          <div className="hero-nav-user"><span>{user?.name}</span><button className="btn hero-signout" onClick={logout}>Sign out</button></div>
+          <div className="hero-nav-user">
+            <Link className="hero-avatar-link" to="/profile" title="Your profile">
+              <Avatar name={user?.name ?? ''} avatarUrl={avatarUrl} size={34} />
+            </Link>
+            <Link className="btn btn-s" to="/profile">Profile</Link>
+            <button className="btn hero-signout" onClick={logout}>Sign out</button>
+          </div>
         </header>
       ) : (
         <>

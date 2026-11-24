@@ -12,7 +12,7 @@ from backend.core.security import hash_password, verify_password
 from backend.core.tokens import token_response
 from backend.db.session import get_db
 from backend.models.user import User
-from backend.schemas.user import UserCreate, UserLogin, UserRead
+from backend.schemas.user import UserCreate, UserLogin, UserRead, UserUpdate
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -88,4 +88,25 @@ async def refresh(body: RefreshRequest, db: AsyncSession = Depends(get_db)):
 
 @router.get("/me", response_model=UserRead)
 async def me(current_user: User = Depends(get_current_user)):
+    return current_user
+
+
+@router.patch("/me", response_model=UserRead)
+async def update_me(
+    body: UserUpdate,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    if body.email is not None and body.email != current_user.email:
+        from sqlalchemy import select
+        result = await db.execute(select(User).where(User.email == body.email))
+        if result.scalar_one_or_none():
+            raise HTTPException(status_code=400, detail="Email already in use")
+        current_user.email = body.email
+    if body.name is not None:
+        current_user.name = body.name
+    if body.avatar_url is not None:
+        current_user.avatar_url = body.avatar_url
+    await db.commit()
+    await db.refresh(current_user)
     return current_user

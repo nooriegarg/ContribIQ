@@ -60,4 +60,36 @@ describe('auth API', () => {
       await expect(requestPasswordReset('a@b.com')).rejects.toThrow('unavailable')
     })
   })
+
+  describe('updateCurrentUser', () => {
+    it('calls PATCH /auth/me and returns mapped user', async () => {
+      mockApiCall.mockResolvedValueOnce({ id: '1', email: 'new@example.com', name: 'New Name' })
+
+      const { updateCurrentUser } = await import('../../api/auth')
+      const result = await updateCurrentUser({ name: 'New Name', email: 'new@example.com' })
+
+      expect(result.id).toBe('1')
+      expect(result.name).toBe('New Name')
+      expect(result.email).toBe('new@example.com')
+      expect(mockApiCall).toHaveBeenCalledWith(
+        '/auth/me',
+        expect.objectContaining({ method: 'PATCH' }),
+      )
+    })
+
+    it('falls back to email prefix when name is null in response', async () => {
+      mockApiCall.mockResolvedValueOnce({ id: '1', email: 'user@example.com', name: null })
+
+      const { updateCurrentUser } = await import('../../api/auth')
+      const result = await updateCurrentUser({ email: 'user@example.com' })
+      expect(result.name).toBe('user')
+    })
+
+    it('propagates API error when request fails', async () => {
+      mockApiCall.mockRejectedValueOnce(new Error('Email already in use'))
+
+      const { updateCurrentUser } = await import('../../api/auth')
+      await expect(updateCurrentUser({ email: 'taken@example.com' })).rejects.toThrow('Email already in use')
+    })
+  })
 })

@@ -7,10 +7,13 @@
 .contrib-shell .sb-brand-tag, .contrib-shell .sb-lbl, .contrib-shell .sb-sub { display: block; }
 .contrib-shell .sb-dot svg { width: 14px; height: 14px; }
 .contrib-shell .sb-new-repo { display: block; margin-bottom: 12px; color: var(--b4); font-size: 12px; }
-.contrib-shell .sb-signout { border: 0; background: transparent; padding: 12px 0 0; color: white; cursor: pointer; font-size: 12px; }
+.contrib-shell .sb-profile-link { display: block; color: var(--b4); font-size: 12px; padding: 10px 0 0; text-decoration: none; }
+.contrib-shell .sb-profile-link:hover { color: white; }
+.contrib-shell .sb-signout { border: 0; background: transparent; padding: 10px 0 0; color: white; cursor: pointer; font-size: 12px; }
 .contrib-shell .mobile-nav { display: none; }
 .contrib-shell .hero-nav { position: absolute; z-index: 5; top: 0; left: 0; right: 0; padding: 22px 32px; display: flex; justify-content: space-between; gap: 20px; align-items: center; }
 .contrib-shell .hero-nav-user { display: flex; align-items: center; gap: 16px; color: var(--b4); font-size: 12px; }
+.contrib-shell .hero-avatar-link { display: flex; align-items: center; text-decoration: none; }
 .contrib-shell .hero-signout { color: white; background: rgba(255,255,255,.08); }
 .contrib-shell .hero-content { max-width: 668px; }
 .contrib-shell .hero-desc { max-width: 560px; margin-left: auto; margin-right: auto; }
@@ -153,6 +156,22 @@
 .switch-block-icon { font-size: 40px; margin-bottom: 14px; }
 .switch-block-title { font-size: 18px; font-weight: 700; color: var(--b10); margin-bottom: 10px; }
 .switch-block-desc { font-size: 13.5px; color: var(--gd); line-height: 1.65; margin-bottom: 24px; }
+/* Top-right avatar bar in workflow main area */
+.contrib-shell .main-topbar {
+  position: absolute;
+  top: 16px;
+  right: 24px;
+  z-index: 10;
+}
+.contrib-shell .main-avatar-link {
+  display: flex;
+  align-items: center;
+  text-decoration: none;
+  border-radius: 50%;
+  transition: opacity .15s;
+}
+.contrib-shell .main-avatar-link:hover { opacity: .85; }
+
 @media (prefers-reduced-motion: reduce) {
   .contrib-shell .sb-switcher-arrow { transition: none; }
   .switch-block-modal { animation: none; }

@@ -51,10 +51,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     keysToRemove.forEach(key => sessionStorage.removeItem(key))
     setToken(null)
     setUser(null)
+    window.location.href = '/login'
+  }, [])
+
+  const updateUser = useCallback((partial: Partial<User>) => {
+    setUser(prev => {
+      if (!prev) return prev
+      const next = { ...prev, ...partial }
+      if (localStorage.getItem('user')) {
+        localStorage.setItem('user', JSON.stringify(next))
+      } else {
+        sessionStorage.setItem('user', JSON.stringify(next))
+      }
+      return next
+    })
   }, [])
 
   return (
-    <AuthContext.Provider value={{ user, token, login, logout }}>
+    <AuthContext.Provider value={{ user, token, login, logout, updateUser }}>
       {children}
     </AuthContext.Provider>
   )

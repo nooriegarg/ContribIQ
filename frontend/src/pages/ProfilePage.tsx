@@ -5,27 +5,9 @@ import ChipSelector from '../components/ChipSelector'
 import ExperienceSelector from '../components/ExperienceSelector'
 import WorkflowHeader from '../components/WorkflowHeader'
 import WorkflowIcon from '../components/WorkflowIcon'
+import { INTEREST_OPTIONS, LANGUAGE_OPTIONS } from '../data/profileOptions'
 import { useWorkflow } from '../hooks/useWorkflow'
 import { useAuth } from '../context/useAuth'
-
-const languages = [
-  { value: 'python', label: 'Python' },
-  { value: 'typescript', label: 'TypeScript' },
-  { value: 'javascript', label: 'JavaScript' },
-  { value: 'go', label: 'Go' },
-  { value: 'rust', label: 'Rust' },
-  { value: 'java', label: 'Java' },
-  { value: 'documentation', label: 'Documentation' },
-]
-
-const interests = [
-  { value: 'backend', label: 'Backend / API' },
-  { value: 'frontend', label: 'Frontend / UI' },
-  { value: 'testing', label: 'Testing' },
-  { value: 'documentation', label: 'Documentation' },
-  { value: 'devops', label: 'DevOps' },
-  { value: 'database', label: 'Database' },
-]
 
 export default function ProfilePage() {
   const { basePath } = useWorkflow()
@@ -126,7 +108,7 @@ export default function ProfilePage() {
               <h3 className="profile-q">Which languages are you comfortable with?</h3>
               <ChipSelector
                 label="Programming languages and documentation"
-                options={languages}
+                options={LANGUAGE_OPTIONS}
                 selected={languagesSelected}
                 onChange={value => void toggleSelection(value, languagesSelected, setLanguagesSelected, 'languages')}
               />
@@ -141,7 +123,7 @@ export default function ProfilePage() {
               <h3 className="profile-q">What are you interested in working on?</h3>
               <ChipSelector
                 label="Areas of interest"
-                options={interests}
+                options={INTEREST_OPTIONS}
                 selected={interestsSelected}
                 onChange={value => void toggleSelection(value, interestsSelected, setInterestsSelected, 'interests')}
               />

@@ -231,7 +231,8 @@
       min-height: 100vh;
       display: flex;
       flex-direction: column;
-      transition: margin-left .3s
+      transition: margin-left .3s;
+      position: relative;
     }
 
     .contrib-shell #main.full {
@@ -280,6 +281,16 @@
       align-items: center;
       gap: 10px
     }
+
+    .contrib-shell .wh-avatar-link {
+      display: flex;
+      align-items: center;
+      text-decoration: none;
+      border-radius: 50%;
+      margin-left: 4px;
+      transition: opacity .15s;
+    }
+    .contrib-shell .wh-avatar-link:hover { opacity: .85; }
 
     /* LOADING */
     .contrib-shell #load-overlay {

@@ -1,0 +1,142 @@
+/* Shared component styles — buttons, chip selectors, radio cards.
+   Used by OnboardingSetupPage, UserProfilePage, and ProfilePage.
+   Intentionally unscoped so they work outside .contrib-shell. */
+
+/* Buttons */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 9px 18px;
+  border-radius: 8px;
+  font-family: var(--font);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+  transition: all .15s;
+  text-decoration: none;
+}
+
+.btn svg { width: 14px; height: 14px; }
+.btn:disabled { cursor: not-allowed; opacity: .55; }
+
+.btn-p { background: var(--b6); color: white; }
+.btn-p:hover:not(:disabled) { background: var(--b7); }
+.btn-p svg { fill: white; }
+
+.btn-s { background: white; color: var(--black); border: 1.5px solid var(--gl); }
+.btn-s:hover:not(:disabled) { background: var(--gl); }
+
+.btn-lg { padding: 12px 24px; font-size: 14px; border-radius: 10px; }
+
+.chip-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.chip {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 7px 13px;
+  background: white;
+  border: 1.5px solid var(--gl);
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+  transition: all .15s;
+  user-select: none;
+}
+
+.chip:hover {
+  border-color: var(--b6);
+  color: var(--b7);
+}
+
+.chip.sel {
+  background: var(--b2);
+  border-color: var(--b6);
+  color: var(--b10);
+}
+
+.chip-box {
+  width: 14px;
+  height: 14px;
+  border-radius: 4px;
+  border: 2px solid var(--gm);
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.chip.sel .chip-box {
+  background: var(--b6);
+  border-color: var(--b6);
+}
+
+.chip-chk { display: none; }
+.chip.sel .chip-chk { display: block; }
+.chip-chk svg { width: 8px; height: 8px; fill: white; }
+
+.radio-row {
+  display: flex;
+  gap: 10px;
+}
+
+.radio-card {
+  flex: 1;
+  padding: 13px 14px;
+  background: white;
+  border: 2px solid var(--gl);
+  border-radius: 10px;
+  cursor: pointer;
+  text-align: center;
+  transition: all .15s;
+  user-select: none;
+}
+
+.radio-card:hover { border-color: var(--b6); }
+
+.radio-card.sel {
+  background: var(--b2);
+  border-color: var(--b6);
+}
+
+.rc-icon { font-size: 22px; margin-bottom: 5px; display: block; }
+.rc-lbl { font-size: 12px; font-weight: 700; color: var(--black); display: block; }
+.rc-sub { font-size: 11px; color: var(--gd); margin-top: 2px; display: block; }
+
+.choice-radio { position: absolute; opacity: 0; width: 0; height: 0; pointer-events: none; }
+
+/* Custom chip additions */
+.chip-selector { display: flex; flex-direction: column; gap: 10px; }
+
+.chip-custom { background: var(--b2); border-color: var(--b5); }
+.chip-remove { margin-left: 2px; font-size: 14px; color: var(--b6); line-height: 1; }
+
+.chip-add-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 2px;
+}
+
+.chip-add-input {
+  flex: 1;
+  max-width: 220px;
+  padding: 6px 10px;
+  border: 1.5px solid var(--gl);
+  border-radius: 8px;
+  font-size: 13px;
+  font-family: var(--font);
+  color: var(--b10);
+  outline: none;
+  transition: border-color .15s;
+}
+
+.chip-add-input:focus { border-color: var(--b6); }
+.chip-add-input::placeholder { color: var(--gm); }

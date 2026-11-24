@@ -11,6 +11,7 @@ interface AuthContextValue {
   token: string | null
   login: (token: string, refreshToken:string, user: User, rememberMe: boolean) => void
   logout: () => void
+  updateUser: (partial: Partial<User>) => void
 }
 
 export const AuthContext = createContext<AuthContextValue | null>(null)

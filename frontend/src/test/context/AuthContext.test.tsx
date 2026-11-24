@@ -69,6 +69,21 @@ describe('AuthProvider', () => {
     expect(ctx.user).toBeNull()
   })
 
+  it('logout redirects to /login via window.location.href', () => {
+    let ctx!: ReturnType<typeof useAuth>
+    renderWithAuth((c) => { ctx = c })
+
+    const originalHref = window.location.href
+    Object.defineProperty(window, 'location', {
+      writable: true,
+      value: { href: originalHref },
+    })
+
+    act(() => { ctx.logout() })
+
+    expect(window.location.href).toBe('/login')
+  })
+
   it('restores token and user from localStorage on mount', () => {
     const user = { id: '1', email: 'a@b.com', name: 'Alice' }
     localStorage.setItem('token', 'stored-tok')
@@ -79,6 +94,48 @@ describe('AuthProvider', () => {
 
     expect(ctx.token).toBe('stored-tok')
     expect(ctx.user).toEqual(user)
+  })
+
+  it('updateUser merges partial into user state', () => {
+    localStorage.setItem('token', 'tok')
+    localStorage.setItem('user', JSON.stringify({ id: '1', email: 'a@b.com', name: 'Alice' }))
+
+    let ctx!: ReturnType<typeof useAuth>
+    renderWithAuth((c) => { ctx = c })
+
+    act(() => {
+      ctx.updateUser({ name: 'Alice Updated' })
+    })
+
+    expect(ctx.user?.name).toBe('Alice Updated')
+    expect(ctx.user?.email).toBe('a@b.com')
+  })
+
+  it('updateUser persists updated user to localStorage', () => {
+    localStorage.setItem('token', 'tok')
+    localStorage.setItem('user', JSON.stringify({ id: '1', email: 'a@b.com', name: 'Alice' }))
+
+    let ctx!: ReturnType<typeof useAuth>
+    renderWithAuth((c) => { ctx = c })
+
+    act(() => {
+      ctx.updateUser({ name: 'Bob', email: 'bob@example.com' })
+    })
+
+    const stored = JSON.parse(localStorage.getItem('user') ?? '{}')
+    expect(stored.name).toBe('Bob')
+    expect(stored.email).toBe('bob@example.com')
+  })
+
+  it('updateUser is a no-op when user is null', () => {
+    let ctx!: ReturnType<typeof useAuth>
+    renderWithAuth((c) => { ctx = c })
+
+    act(() => {
+      ctx.updateUser({ name: 'Ghost' })
+    })
+
+    expect(ctx.user).toBeNull()
   })
 })
 
