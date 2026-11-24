@@ -91,19 +91,27 @@ def test_application_diagram_uses_source_backed_roles_and_relationships(architec
     assert "fulfill.kiq(order)" in prompt and "worker.py" in prompt
 
 
-@pytest.mark.parametrize("invalid", ["component_source", "connection_source", "unknown_component", "technology_node", "disconnected_node"])
+@pytest.mark.parametrize("invalid", ["component_source", "technology_node"])
 def test_application_diagram_rejects_ungrounded_or_stack_only_output(architecture_model, invalid):
     original, generate, _ = architecture_model
     graph = copy.deepcopy(original)
     if invalid == "component_source":
         graph["components"][0]["source_file"] = "unread.py"
-    elif invalid == "connection_source":
+    elif invalid == "technology_node":
+        graph["components"][0]["label"] = "Python"
+    with pytest.raises(ValueError):
+        generate(graph)
+
+
+@pytest.mark.parametrize("invalid", ["connection_source", "unknown_component", "disconnected_node"])
+def test_application_diagram_silently_drops_invalid_connections(architecture_model, invalid):
+    original, generate, _ = architecture_model
+    graph = copy.deepcopy(original)
+    if invalid == "connection_source":
         graph["connections"][0]["source_file"] = "unread.py"
     elif invalid == "unknown_component":
         graph["connections"][0]["target"] = "invented-database"
-    elif invalid == "technology_node":
-        graph["components"][0]["label"] = "Python"
     else:
         graph["components"].append({"id": "unused", "label": "Unused Service", "source_file": "main.py"})
-    with pytest.raises(ValueError):
-        generate(graph)
+    result = generate(graph)
+    assert "graph TD" in result
