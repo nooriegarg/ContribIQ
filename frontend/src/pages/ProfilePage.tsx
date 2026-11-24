@@ -66,7 +66,6 @@ export default function ProfilePage() {
   ) {
     const next = current.includes(value) ? current.filter(item => item !== value) : [...current, value]
     setCurrent(next)
-    setNotice('')
     setError('')
     const request = updateQueue.current.then(async () => {
       const updated = await updateProfile({ [field]: next })
@@ -75,7 +74,6 @@ export default function ProfilePage() {
     updateQueue.current = request.then(() => undefined, () => undefined)
     try {
       await request
-      setNotice('Profile updated')
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : 'Unable to save your profile.')
     }
@@ -108,6 +106,7 @@ export default function ProfilePage() {
         {error && <div className="notice error" role="alert">{error}{!profile && <button className="btn btn-s mt12" onClick={() => setAttempt(attempt + 1)}>Try again</button>}</div>}
         {loading ? <p className="profile-loading" role="status">Loading profile...</p> : profile && (
           <fieldset className="profile-controls" disabled={saving}>
+            <div className="profile-grid">
             <section className="card">
               <h3 className="profile-q">Which languages are you comfortable with?</h3>
               <ChipSelector
@@ -144,6 +143,7 @@ export default function ProfilePage() {
               </div>
               <p className="muted time-choice-note">Planning preference for this visit only. Time availability is not saved or used for issue ranking yet.</p>
             </section>
+            </div>
             {notice && <p className="notice success mt16" role="status">{notice}</p>}
           </fieldset>
         )}

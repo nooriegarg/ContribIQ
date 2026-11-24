@@ -4,6 +4,7 @@ from typing import Any
 from sqlalchemy import delete, func
 from sqlalchemy.dialects.postgresql import insert
 
+from backend.core.config import get_settings
 from backend.db.session import AsyncSessionLocal
 from backend.models.issue import Issue
 from backend.services.difficulty_service import score_issue
@@ -46,7 +47,7 @@ async def score_issues(
     full_name = f"{owner}/{repo_name}"
     known_paths = set(file_paths or [])
 
-    async with GitHubClient(token=github_token) as client:
+    async with GitHubClient(token=github_token or get_settings().GITHUB_TOKEN) as client:
         issues = await fetch_open_issues(client, owner, repo_name)
         rows: list[dict[str, Any]] = []
         for issue in issues:
