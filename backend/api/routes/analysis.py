@@ -10,12 +10,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from taskiq.result import TaskiqResult
 
 from backend.api.routes.auth import get_current_user
+from backend.core.config import get_settings
 from backend.db.session import get_db
 from backend.models.issue import Issue
 from backend.models.profile import ContributorProfile
 from backend.models.user import User
 from backend.services.onboarding_service import generate_onboarding_plan
 from backend.services.readiness_service import calculate_readiness
+from backend.services.valkey_client import get_key
 from backend.worker.broker import broker
 from backend.worker.tasks.analyze import analyze_repository
 from backend.worker.tasks.generate_diagram import generate_diagram
@@ -144,11 +146,14 @@ async def start_diagram(
     data = result.return_value or {}
     if not data.get("owner") or not data.get("repo"):
         raise HTTPException(status_code=400, detail="Repository identity is missing. Run a new analysis.")
+    settings = get_settings()
+    github_token = await get_key(f"gh-token:{current_user.id}") or settings.GITHUB_TOKEN
     task = await generate_diagram.kiq(
         owner=data["owner"],
         repo_name=data["repo"],
         description=data.get("metadata", {}).get("description"),
         tech_stack=data.get("tech_stack", []),
+        github_token=github_token,
     )
     return {"diagram_task_id": task.task_id}
 

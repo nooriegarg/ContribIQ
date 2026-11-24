@@ -12,8 +12,9 @@ async def generate_diagram(
     repo_name: str,
     description: str | None,
     tech_stack: list[str],
+    github_token: str | None = None,
 ) -> dict[str, Any]:
-    async with GitHubClient() as client:
+    async with GitHubClient(token=github_token) as client:
         source_files, file_paths = await collect_architecture_context(client, owner, repo_name)
     mermaid_syntax = await generate_mermaid_diagram(
         repo_name=f"{owner}/{repo_name}",

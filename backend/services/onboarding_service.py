@@ -39,7 +39,8 @@ Return a JSON object with this exact shape:
   "estimated_minutes": 30,
   "issue_preview": {{
     "number": 0,
-    "title": "good first issue title",
+    "title": "<specific actionable issue for this repo>",
+    "description": "<one sentence explaining the task>",
     "difficulty": "beginner"
   }}
 }}
@@ -47,6 +48,9 @@ Return a JSON object with this exact shape:
 Rules:
 - 4 to 6 steps total
 - commands must be real shell commands for this tech stack
+- issue_preview.title must be a concrete, actionable task specific to this repo \
+(e.g. "Add unit tests for the auth module", "Fix typo in CONTRIBUTING.md", \
+"Improve error messages in CLI parser") — never a generic placeholder
 - Output ONLY valid JSON, no markdown fences, no explanation
 """
 
@@ -121,5 +125,5 @@ def _fallback_plan(full_name: str, tech_stack: str) -> dict[str, Any]:
             },
         ],
         "estimated_minutes": 30,
-        "issue_preview": {"number": 0, "title": "Check the issues tab for good first issues", "difficulty": "beginner"},
+        "issue_preview": {"number": 0, "title": "Browse open issues", "description": "Look through the repository's open issues for a 'good first issue' label to find a suitable starting task.", "difficulty": "beginner"},
     }

@@ -15,20 +15,29 @@ export default function ArchDiagram({ taskId, repoName }: ArchDiagramProps) {
   const [status, setStatus] = useState<'idle' | 'generating' | 'done' | 'error'>('idle')
   const [error, setError] = useState('')
   const [sourceFiles, setSourceFiles] = useState<string[]>([])
+  const [retryCount, setRetryCount] = useState(0)
   const requestRef = useRef<{ taskId: string; promise: Promise<{ diagram_task_id: string }> } | null>(null)
 
   useEffect(() => {
+    const cacheKey = `arch-${taskId}`
+    const cached = sessionStorage.getItem(cacheKey)
+    if (cached && retryCount === 0) {
+      const { syntax: s, sourceFiles: sf } = JSON.parse(cached)
+      setSyntax(s)
+      setSourceFiles(sf)
+      setStatus('done')
+      return
+    }
+
     let active = true
     setStatus('generating')
     setError('')
     setSyntax(null)
     setSourceFiles([])
     setDiagramTaskId(null)
-    if (requestRef.current?.taskId !== taskId) {
-      requestRef.current = {
-        taskId,
-        promise: apiCall<{ diagram_task_id: string }>(`/analysis/${taskId}/diagram`, { method: 'POST' }),
-      }
+    requestRef.current = {
+      taskId,
+      promise: apiCall<{ diagram_task_id: string }>(`/analysis/${taskId}/diagram`, { method: 'POST' }),
     }
     requestRef.current.promise
       .then(({ diagram_task_id }) => {
@@ -41,7 +50,7 @@ export default function ArchDiagram({ taskId, repoName }: ArchDiagramProps) {
         setStatus('error')
       })
     return () => { active = false }
-  }, [taskId])
+  }, [taskId, retryCount])
 
   useEffect(() => {
     if (!diagramTaskId || status !== 'generating') return
@@ -61,6 +70,7 @@ export default function ArchDiagram({ taskId, repoName }: ArchDiagramProps) {
             clearInterval(poll)
             clearTimeout(timeout)
             active = false
+            sessionStorage.setItem(`arch-${taskId}`, JSON.stringify({ syntax: mermaid_syntax, sourceFiles: source_files ?? [] }))
             setSyntax(mermaid_syntax)
             setSourceFiles(source_files ?? [])
             setStatus('done')
@@ -87,7 +97,7 @@ export default function ArchDiagram({ taskId, repoName }: ArchDiagramProps) {
       themeVariables: { primaryColor: '#D1EFFF', primaryTextColor: '#002A86', primaryBorderColor: '#1B90FF', lineColor: '#89D1FF', fontFamily: 'system-ui, sans-serif' },
     })
     mermaid
-      .render(`arch-${repoName.replace(/\W/g, '-')}`, syntax)
+      .render(`arch-${repoName.replace(/\W/g, '-')}-${retryCount}`, syntax)
       .then(({ svg }) => {
         if (containerRef.current) containerRef.current.innerHTML = svg
       })
@@ -95,7 +105,12 @@ export default function ArchDiagram({ taskId, repoName }: ArchDiagramProps) {
         setError(reason instanceof Error ? reason.message : 'The generated diagram could not be rendered.')
         setStatus('error')
       })
-  }, [syntax, repoName])
+  }, [syntax, repoName, retryCount])
+
+  const handleRetry = () => {
+    sessionStorage.removeItem(`arch-${taskId}`)
+    setRetryCount(c => c + 1)
+  }
 
   return (
     <section className="card mt16">
@@ -104,7 +119,12 @@ export default function ArchDiagram({ taskId, repoName }: ArchDiagramProps) {
         Application Architecture
       </h2>
       {status === 'generating' && <p className="muted" role="status">Reading repository source and generating application architecture...</p>}
-      {status === 'error' && <p className="notice error" role="alert">{error} Diagram generation requires the background worker and the configured Ollama model.</p>}
+      {status === 'error' && (
+        <div className="notice error" role="alert">
+          <p>{error}</p>
+          <button className="btn btn-s mt12" onClick={handleRetry}>Try again</button>
+        </div>
+      )}
       <div className="arch-wrap" ref={containerRef} />
       {status === 'done' && sourceFiles.length > 0 && <p className="muted mt12">Inferred from {sourceFiles.join(', ')}. Shows application components and connections, not a verified runtime trace.</p>}
     </section>
