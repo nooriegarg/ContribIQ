@@ -7,10 +7,10 @@ interface QAResponse {
 }
 
 interface QAPanelProps {
-  repoId: string
+  taskId: string
 }
 
-export default function QAPanel({ repoId }: QAPanelProps) {
+export default function QAPanel({ taskId }: QAPanelProps) {
   const [question, setQuestion] = useState('')
   const [loading, setLoading] = useState(false)
   const [result, setResult] = useState<QAResponse | null>(null)
@@ -27,7 +27,7 @@ export default function QAPanel({ repoId }: QAPanelProps) {
     try {
       const data = await apiCall<QAResponse>('/qa/ask', {
         method: 'POST',
-        body: JSON.stringify({ repo_id: repoId, question: question.trim() }),
+        body: JSON.stringify({ task_id: taskId, question: question.trim() }),
       })
       setResult(data)
     } catch (err) {
@@ -38,7 +38,7 @@ export default function QAPanel({ repoId }: QAPanelProps) {
   }
 
   return (
-    <section className="card">
+    <section className="card" style={{ gridColumn: '1 / -1' }}>
       <h2 className="ctitle">Ask About This Codebase</h2>
 
       <form onSubmit={handleSubmit} style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
@@ -51,10 +51,10 @@ export default function QAPanel({ repoId }: QAPanelProps) {
           style={{
             flex: 1,
             padding: '8px 12px',
-            background: 'rgba(255,255,255,0.05)',
-            border: '1px solid rgba(255,255,255,0.12)',
+            background: 'white',
+            border: '1px solid #ccd4df',
             borderRadius: 6,
-            color: 'var(--white)',
+            color: 'var(--black)',
             fontSize: 13,
             outline: 'none',
           }}
@@ -77,15 +77,16 @@ export default function QAPanel({ repoId }: QAPanelProps) {
       {result && (
         <>
           <div style={{
-            background: 'rgba(255,255,255,0.03)',
-            border: '1px solid rgba(255,255,255,0.08)',
+            background: '#f6f8fa',
+            border: '1px solid #d0d7de',
             borderRadius: 6,
             padding: '14px 16px',
             marginBottom: 12,
+            color: '#24292f',
           }}>
-            <p style={{ fontSize: 14, color: 'var(--white)', lineHeight: 1.65, margin: 0, whiteSpace: 'pre-wrap' }}>
+            <div style={{ fontSize: 14, color: '#24292f', lineHeight: 1.65, margin: 0, whiteSpace: 'pre-wrap' }}>
               {result.answer}
-            </p>
+            </div>
           </div>
 
           {result.sources.length > 0 && (

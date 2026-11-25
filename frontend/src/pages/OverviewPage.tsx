@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom'
 import { useWorkflow } from '../hooks/useWorkflow'
 import ArchDiagram from '../components/ArchDiagram'
 import DirectoryMap from '../components/DirectoryMap'
+import QAPanel from '../components/QAPanel'
 import RepoBanner from '../components/RepoBanner'
 import RepoStats from '../components/RepoStats'
 import TechStack from '../components/TechStack'
@@ -26,6 +27,7 @@ export default function OverviewPage() {
         <div className="grid2"><TechStack stack={tech_stack} /><DirectoryMap directories={directory_map} /></div>
         <ArchDiagram taskId={taskId} repoName={result.repo} />
         <RepoStats openIssues={metadata.open_issues} goodFirstIssues={goodFirstIssues} />
+        <QAPanel taskId={taskId} />
         {issueError && <p className="notice error mt16" role="alert">{issueError}</p>}
       </div>
       <footer className="action-row">

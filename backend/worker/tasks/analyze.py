@@ -1,7 +1,12 @@
 import logging
+import uuid
 from typing import Any
 
+from sqlalchemy.dialects.postgresql import insert
+
 from backend.core.config import get_settings
+from backend.db.session import AsyncSessionLocal
+from backend.models.repository import Repository
 from backend.services.cache_service import get_cached_analysis, set_cached_analysis
 from backend.services.github_client import GitHubClient
 from backend.services.tech_stack_service import detect_tech_stack, map_directories
@@ -91,4 +96,51 @@ async def analyze_repository(owner: str, repo_name: str, github_token: str | Non
     }
 
     await set_cached_analysis(owner, repo_name, latest_sha, result)
+
+    # Upsert repository row and kick off embedding so Q&A works
+    try:
+        from backend.worker.tasks.embed_repo import embed_repository  # local import avoids circular
+        repo_id = uuid.uuid4()
+        async with AsyncSessionLocal() as session:
+            stmt = (
+                insert(Repository)
+                .values(
+                    id=repo_id,
+                    owner=owner,
+                    name=repo_name,
+                    full_name=f"{owner}/{repo_name}",
+                    description=repo_data.get("description"),
+                    stars=repo_data.get("stargazers_count", 0),
+                    forks=repo_data.get("forks_count", 0),
+                    open_issues=repo_data.get("open_issues_count", 0),
+                    language=repo_data.get("language"),
+                    topics=repo_data.get("topics", []),
+                    default_branch=repo_data.get("default_branch", "main"),
+                    latest_sha=latest_sha,
+                )
+                .on_conflict_do_update(
+                    index_elements=["full_name"],
+                    set_={
+                        "stars": repo_data.get("stargazers_count", 0),
+                        "forks": repo_data.get("forks_count", 0),
+                        "open_issues": repo_data.get("open_issues_count", 0),
+                        "language": repo_data.get("language"),
+                        "topics": repo_data.get("topics", []),
+                        "latest_sha": latest_sha,
+                    },
+                )
+                .returning(Repository.id)
+            )
+            row = await session.execute(stmt)
+            actual_repo_id = row.scalar_one()
+            await session.commit()
+        await embed_repository.kiq(
+            repo_id=str(actual_repo_id),
+            owner=owner,
+            repo_name=repo_name,
+            file_tree=tree,
+        )
+    except Exception:
+        logger.exception("Could not trigger embedding for %s/%s", owner, repo_name)
+
     return result

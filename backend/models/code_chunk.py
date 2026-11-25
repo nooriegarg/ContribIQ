@@ -15,4 +15,4 @@ class CodeChunk(Base):
     file_path = Column(String(1024), nullable=False)
     chunk_index = Column(Integer, nullable=False)
     content = Column(Text, nullable=False)
-    embedding = Column(Vector(768), nullable=False)
+    embedding = Column(Vector(384), nullable=False)

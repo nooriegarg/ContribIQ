@@ -1,7 +1,7 @@
 """
 Embedding service — chunks source files and stores vectors in PostgreSQL via pgvector.
 
-fastembed model: nomic-embed-code (768 dimensions, code-optimised, CPU-only)
+fastembed model: BAAI/bge-small-en-v1.5 (384 dimensions, lightweight, CPU-friendly)
 """
 
 import uuid
@@ -13,8 +13,8 @@ from sqlalchemy.dialects.postgresql import insert
 from backend.db.session import AsyncSessionLocal
 from backend.models.code_chunk import CodeChunk
 
-_MODEL_NAME = "nomic-ai/nomic-embed-code"
-_DIMS = 768
+_MODEL_NAME = "BAAI/bge-small-en-v1.5"
+_DIMS = 384
 
 _embedder: TextEmbedding | None = None
 
