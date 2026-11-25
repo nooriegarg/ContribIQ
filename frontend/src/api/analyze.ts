@@ -159,6 +159,7 @@ export interface IssueDetail {
   files_affected: { path: string; role: string }[]
   prerequisites: { title: string; description: string }[]
   impact_chain: string[]
+  implementation_steps: string[]
   similar_prs: { number: number; title: string; url: string | null }[]
   checklist: { step: string }[]
 }

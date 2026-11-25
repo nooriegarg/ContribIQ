@@ -47,6 +47,25 @@ Example: ["API", "AuthService", "User Model"]
 Only return the JSON array.
 """
 
+_WORKFLOW_PROMPT = """\
+You are helping a first-time contributor understand how to fix a specific GitHub issue.
+
+Write a concrete, actionable implementation workflow — 4 to 6 steps — tailored to THIS issue.
+Each step should describe a real action the contributor needs to take for this specific problem,
+not generic advice. Reference the files, components, or behavior mentioned in the issue where possible.
+
+Issue #{number}: {title}
+
+Description:
+{body}
+
+Labels: {labels}
+Files likely affected: {files}
+
+Return ONLY a JSON array of short step strings (each under 15 words). No explanation outside the array.
+Example: ["Reproduce the bug by calling X with Y input", "Trace the failure to the Z function in api/routes.py"]
+"""
+
 _JSON_ARRAY = re.compile(r"\[.*?\]", re.DOTALL)
 
 _CHECKLIST = [
@@ -101,6 +120,31 @@ async def _generate_impact_chain(issue: Issue) -> list[str]:
     return ["Repository", "Source Code"]
 
 
+async def _generate_implementation_workflow(issue: Issue) -> list[str]:
+    prompt = _WORKFLOW_PROMPT.format(
+        number=issue.number,
+        title=issue.title,
+        body=(issue.body or "No description provided.")[:1500],
+        labels=", ".join(issue.labels) if issue.labels else "none",
+        files=", ".join((issue.files_affected or [])[:8]) or "unknown",
+    )
+    try:
+        raw = await _llm(prompt)
+        match = _JSON_ARRAY.search(raw)
+        if match:
+            steps = json.loads(match.group(0))
+            if isinstance(steps, list) and steps:
+                return [str(s) for s in steps[:6]]
+    except Exception as exc:
+        logger.warning("Workflow generation failed: %s", exc)
+    return [
+        "Reproduce the reported behavior locally.",
+        "Read the relevant code and existing tests before editing.",
+        "Make a small, focused change that follows the project conventions.",
+        "Run the documented checks and explain your changes in the pull request.",
+    ]
+
+
 async def find_similar_prs(
     owner: str,
     repo: str,
@@ -143,10 +187,11 @@ async def get_issue_detail(
 
     owner, repo = repo_full_name.split("/", 1)
 
-    explanation, impact_chain, similar_prs = await asyncio.gather(
+    explanation, impact_chain, similar_prs, implementation_steps = await asyncio.gather(
         _generate_explanation(issue),
         _generate_impact_chain(issue),
         find_similar_prs(owner, repo, issue.title, github_token),
+        _generate_implementation_workflow(issue),
     )
 
     return {
@@ -176,6 +221,7 @@ async def get_issue_detail(
             },
         ],
         "impact_chain": impact_chain,
+        "implementation_steps": implementation_steps,
         "similar_prs": similar_prs,
         "checklist": _CHECKLIST,
     }

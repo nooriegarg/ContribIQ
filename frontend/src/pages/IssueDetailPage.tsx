@@ -157,7 +157,14 @@ export default function IssueDetailPage() {
             </div>
           </div>}
           {tab === 1 && <div className="grid2">
-            <section className="card"><h3 className="ctitle">Suggested Workflow</h3><ol className="prereq-list implementation-list">{['Confirm the bug or requested behavior with a minimal example.', 'Read the relevant code and existing tests before editing.', 'Make a small, focused change that follows the project conventions.', 'Run the documented checks and explain your changes in the pull request.'].map((text, index) => <li className="prereq-item" key={text}><span className="prereq-num">{index + 1}</span><span className="prereq-ttl">{text}</span></li>)}</ol></section>
+            <section className="card">
+              <h3 className="ctitle">Suggested Workflow</h3>
+              {detailLoading
+                ? <p className="muted">Generating workflow...</p>
+                : detail?.implementation_steps && detail.implementation_steps.length > 0
+                  ? <ol className="prereq-list implementation-list">{detail.implementation_steps.map((text, index) => <li className="prereq-item" key={text}><span className="prereq-num">{index + 1}</span><span className="prereq-ttl">{text}</span></li>)}</ol>
+                  : <p className="muted">No workflow available for this issue.</p>}
+            </section>
             <section className="card"><h3 className="ctitle">Explore the Repository</h3><p className="muted">Clone the repository to inspect its code. If you plan to contribute through a fork, clone your fork instead.</p><CodeBlock commands={[`git clone ${repoURL}.git`, `cd ${result.repo}`]} /><p className="muted mt16">Follow the repository&apos;s README and contribution guidelines for setup and test commands.</p><a className="btn btn-s mt16" href={repoURL} target="_blank" rel="noreferrer">Open Repository</a></section>
           </div>}
           {tab === 2 && <section className="card">
