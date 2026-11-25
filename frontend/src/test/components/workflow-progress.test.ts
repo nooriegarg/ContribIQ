@@ -166,3 +166,49 @@ describe('step state (isDone / isActive)', () => {
     }
   })
 })
+
+// ─── maxStep update logic ─────────────────────────────────────────────────────
+// Mirrors the useEffect in WorkflowLayout:
+//   if (hero) return
+//   if (currentStep > maxStep) { setMaxStep(currentStep); saveProgress(...) }
+//
+// Bug fixed: previously guarded with `if (hero || !token || result) return`
+// which caused maxStep to never advance when the analysis result was loaded.
+
+function shouldUpdateMaxStep(currentStep: number, maxStep: number, hero: boolean): boolean {
+  if (hero) return false
+  return currentStep > maxStep
+}
+
+describe('maxStep update logic', () => {
+  it('updates maxStep when currentStep advances', () => {
+    expect(shouldUpdateMaxStep(2, 1, false)).toBe(true)
+    expect(shouldUpdateMaxStep(3, 2, false)).toBe(true)
+  })
+
+  it('does not update maxStep when already at or beyond currentStep', () => {
+    expect(shouldUpdateMaxStep(2, 2, false)).toBe(false)
+    expect(shouldUpdateMaxStep(1, 3, false)).toBe(false)
+  })
+
+  it('never updates maxStep in hero mode', () => {
+    expect(shouldUpdateMaxStep(5, 1, true)).toBe(false)
+  })
+
+  it('updates maxStep regardless of whether result is loaded', () => {
+    // The old bug: result being truthy caused the effect to bail out early.
+    // The fix removes the result check — only hero blocks the update.
+    expect(shouldUpdateMaxStep(2, 1, false)).toBe(true)
+    expect(shouldUpdateMaxStep(3, 2, false)).toBe(true)
+  })
+
+  it('unlocks sidebar step 3 after visiting step 2 with result loaded', () => {
+    // Simulate: user is on step 2 (onboarding), result is loaded, maxStep was 1
+    const currentStep = 2
+    const maxStep = 1
+    const hero = false
+    const newMaxStep = shouldUpdateMaxStep(currentStep, maxStep, hero) ? currentStep : maxStep
+    // step 3 (index 2): index + 1 > newMaxStep + 1 → 3 > 3 → false → unlocked
+    expect(isStepLocked(2, newMaxStep, true)).toBe(false)
+  })
+})

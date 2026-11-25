@@ -73,7 +73,7 @@ export default function WorkflowLayout({ hero = false }: { hero?: boolean }) {
   const issueNumber = detail?.params.issueNumber ?? firstIssue?.number
 
   useEffect(() => {
-    if (hero || !token || result) return
+    if (hero) return
     if (currentStep > maxStep) {
       setMaxStep(currentStep)
       saveProgress(taskId, currentStep)
