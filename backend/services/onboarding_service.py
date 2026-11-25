@@ -93,8 +93,14 @@ async def generate_onboarding_plan(analysis_result: dict[str, Any]) -> dict[str,
 
     raw: str = response.choices[0].message.content or ""
 
+    # Strip markdown fences first
     if "```" in raw:
         raw = re.sub(r"```(?:json)?\s*", "", raw).strip().rstrip("`").strip()
+
+    # Extract the first {...} block so leading/trailing prose doesn't break parsing
+    json_match = re.search(r"\{.*\}", raw, re.DOTALL)
+    if json_match:
+        raw = json_match.group(0)
 
     try:
         plan = json.loads(raw)

@@ -25,7 +25,7 @@ export default function RepoStats({
       {[
         { label: 'Open Issues', value: formatCount(openIssues), color: 'var(--b6)' },
         { label: 'Good First Issues in Analysis', value: goodFirstIssues === null ? 'Not available' : formatCount(goodFirstIssues), color: 'var(--green)' },
-        { label: 'Test Coverage', value: coverageValue, color: coverageColor },
+        { label: 'Test Coverage (est.)', value: coverageValue, color: coverageColor },
       ].map(tile => (
         <div className="card stat-card" key={tile.label}><div className="stat-value" style={{ color: tile.color }}>{tile.value}</div><div className="stat-label">{tile.label}</div></div>
       ))}
