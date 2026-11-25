@@ -61,7 +61,7 @@ export default function ArchDiagram({ taskId, repoName }: ArchDiagramProps) {
       clearInterval(poll)
       setError('Diagram generation timed out. Check that the worker and Ollama model are running.')
       setStatus('error')
-    }, 180000)
+    }, 240000)
     const poll = setInterval(() => {
       apiCall<{ mermaid_syntax: string; status: string; source_files?: string[] }>(`/analysis/diagram/${diagramTaskId}`)
         .then(({ mermaid_syntax, status, source_files }) => {
@@ -93,8 +93,22 @@ export default function ArchDiagram({ taskId, repoName }: ArchDiagramProps) {
     if (!syntax || !containerRef.current) return
 
     mermaid.initialize({
-      startOnLoad: false, theme: 'base', securityLevel: 'strict',
-      themeVariables: { primaryColor: '#D1EFFF', primaryTextColor: '#002A86', primaryBorderColor: '#1B90FF', lineColor: '#89D1FF', fontFamily: 'system-ui, sans-serif' },
+      startOnLoad: false,
+      theme: 'base',
+      securityLevel: 'antiscript',
+      flowchart: { curve: 'basis', useMaxWidth: true },
+      themeVariables: {
+        primaryColor: '#dbeafe',
+        primaryTextColor: '#172554',
+        primaryBorderColor: '#2563eb',
+        lineColor: '#94a3b8',
+        secondaryColor: '#f1f5f9',
+        tertiaryColor: '#f8fafc',
+        fontFamily: 'system-ui, sans-serif',
+        fontSize: '14px',
+        clusterBkg: '#f8fafc',
+        clusterBorder: '#cbd5e1',
+      },
     })
     mermaid
       .render(`arch-${repoName.replace(/\W/g, '-')}-${retryCount}`, syntax)

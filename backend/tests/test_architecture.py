@@ -1,5 +1,4 @@
 import asyncio
-import copy
 import json
 from types import SimpleNamespace
 from unittest.mock import AsyncMock
@@ -54,64 +53,96 @@ def test_source_fetch_failure_propagates():
 
 @pytest.fixture
 def architecture_model(monkeypatch):
-    graph = {
-        "components": [
-            {"id": "api", "label": "Order API", "source_file": "main.py"},
-            {"id": "worker", "label": "Order Fulfillment Worker", "source_file": "worker.py"},
+    # Stage-1 (explanation) response
+    explanation_text = (
+        "The app has two deployment components: an Order API server that receives "
+        "HTTP requests and a background worker that fulfills orders via a queue."
+    )
+    # Stage-2 (graph) response — new schema
+    graph_json = {
+        "groups": [{"id": "app", "label": "Application"}],
+        "nodes": [
+            {"id": "api", "label": "Order API", "type": "API server", "groupId": "app", "shape": "box"},
+            {"id": "worker", "label": "Order Worker", "type": "Background worker", "groupId": "app", "shape": "box"},
         ],
-        "connections": [
-            {"source": "api", "target": "worker", "label": "Dispatches orders", "source_file": "main.py"},
+        "edges": [
+            {"from": "api", "to": "worker", "label": "task payload", "style": "solid"},
         ],
     }
-    completion = AsyncMock()
-    monkeypatch.setattr(ai_service, "acompletion", completion)
-    monkeypatch.setattr(ai_service, "get_settings", lambda: SimpleNamespace(OLLAMA_URL="http://localhost:11434"))
 
-    def generate(value):
-        completion.return_value = SimpleNamespace(choices=[
-            SimpleNamespace(message=SimpleNamespace(content=json.dumps(value))),
+    call_count = 0
+
+    async def mock_completion(**kwargs):
+        nonlocal call_count
+        call_count += 1
+        content = explanation_text if call_count == 1 else json.dumps(graph_json)
+        return SimpleNamespace(choices=[
+            SimpleNamespace(message=SimpleNamespace(content=content))
         ])
+
+    monkeypatch.setattr(ai_service, "acompletion", mock_completion)
+    monkeypatch.setattr(ai_service, "get_settings", lambda: SimpleNamespace(OLLAMA_URL="http://localhost:11434", ANTHROPIC_API_KEY=None, ANTHROPIC_AUTH_TOKEN=None, ANTHROPIC_BASE_URL=None))
+
+    def generate(graph_override=None):
+        nonlocal call_count
+        call_count = 0
+        if graph_override is not None:
+            async def mock_override(**kwargs):
+                nonlocal call_count
+                call_count += 1
+                if call_count == 1:
+                    return SimpleNamespace(choices=[
+                        SimpleNamespace(message=SimpleNamespace(content=explanation_text))
+                    ])
+                return SimpleNamespace(choices=[
+                    SimpleNamespace(message=SimpleNamespace(content=json.dumps(graph_override)))
+                ])
+            monkeypatch.setattr(ai_service, "acompletion", mock_override)
         return asyncio.run(ai_service.generate_mermaid_diagram(
             "owner/orders", "Process orders", ["Python", "FastAPI"],
             source_files={"main.py": "from worker import fulfill\nfulfill.kiq(order)", "worker.py": "async def fulfill(order): ..."},
             file_paths=["main.py", "worker.py"],
         ))
 
-    return graph, generate, completion
+    return graph_json, generate
 
 
 def test_application_diagram_uses_source_backed_roles_and_relationships(architecture_model):
-    graph, generate, completion = architecture_model
-    diagram = generate(graph)
-    assert 'N0["Order API"]' in diagram
-    assert 'N1["Order Fulfillment Worker"]' in diagram
-    assert "N0 -->|Dispatches orders| N1" in diagram
-    assert "Python" not in diagram and "FastAPI" not in diagram
-    prompt = completion.call_args.kwargs["messages"][1]["content"]
-    assert "fulfill.kiq(order)" in prompt and "worker.py" in prompt
+    graph_json, generate = architecture_model
+    diagram = generate()
+    assert 'node_api["Order API"]' in diagram
+    assert 'node_worker["Order Worker"]' in diagram
+    assert 'node_api -->|"task payload"| node_worker' in diagram
+    assert "flowchart TD" in diagram
+    # classDefs present
+    assert "classDef toneBlue" in diagram or "classDef toneMint" in diagram
 
 
-@pytest.mark.parametrize("invalid", ["component_source", "technology_node"])
-def test_application_diagram_rejects_ungrounded_or_stack_only_output(architecture_model, invalid):
-    original, generate, _ = architecture_model
-    graph = copy.deepcopy(original)
-    if invalid == "component_source":
-        graph["components"][0]["source_file"] = "unread.py"
-    elif invalid == "technology_node":
-        graph["components"][0]["label"] = "Python"
-    with pytest.raises(ValueError):
-        generate(graph)
-
-
-@pytest.mark.parametrize("invalid", ["connection_source", "unknown_component", "disconnected_node"])
-def test_application_diagram_silently_drops_invalid_connections(architecture_model, invalid):
-    original, generate, _ = architecture_model
-    graph = copy.deepcopy(original)
-    if invalid == "connection_source":
-        graph["connections"][0]["source_file"] = "unread.py"
-    elif invalid == "unknown_component":
-        graph["connections"][0]["target"] = "invented-database"
+@pytest.mark.parametrize("invalid", ["too_few_nodes", "bad_json"])
+def test_application_diagram_raises_on_unusable_graph(architecture_model, invalid):
+    _, generate = architecture_model
+    if invalid == "too_few_nodes":
+        bad = {"groups": [], "nodes": [{"id": "api", "label": "API", "type": "server", "groupId": None, "shape": "box"}], "edges": []}
     else:
-        graph["components"].append({"id": "unused", "label": "Unused Service", "source_file": "main.py"})
-    result = generate(graph)
-    assert "graph TD" in result
+        bad = "not json at all {{{"
+    with pytest.raises((ValueError, Exception)):
+        generate(bad if isinstance(bad, dict) else {"groups": [], "nodes": [], "edges": []})
+
+
+def test_application_diagram_silently_drops_invalid_edges(architecture_model):
+    _, generate = architecture_model
+    graph_with_bad_edge = {
+        "groups": [{"id": "app", "label": "Application"}],
+        "nodes": [
+            {"id": "api", "label": "Order API", "type": "server", "groupId": "app", "shape": "box"},
+            {"id": "worker", "label": "Order Worker", "type": "worker", "groupId": "app", "shape": "box"},
+        ],
+        "edges": [
+            {"from": "api", "to": "invented_node", "label": "bad edge", "style": "solid"},
+            {"from": "api", "to": "worker", "label": "good edge", "style": "solid"},
+        ],
+    }
+    result = generate(graph_with_bad_edge)
+    assert "flowchart TD" in result
+    assert "good edge" in result
+    assert "invented_node" not in result

@@ -37,6 +37,45 @@ async def analyze_repository(owner: str, repo_name: str, github_token: str | Non
         cached = await get_cached_analysis(owner, repo_name, latest_sha)
         if cached is not None:
             logger.info("Cache hit for %s/%s@%s", owner, repo_name, latest_sha)
+            # Still ensure the repository row + embedding exist even on cache hits
+            try:
+                from backend.worker.tasks.embed_repo import embed_repository
+                async with AsyncSessionLocal() as session:
+                    from sqlalchemy import select as sa_select
+                    row = await session.execute(
+                        sa_select(Repository).where(Repository.full_name == f"{owner}/{repo_name}")
+                    )
+                    existing = row.scalar_one_or_none()
+                    if existing is None:
+                        stmt = (
+                            insert(Repository)
+                            .values(
+                                id=uuid.uuid4(),
+                                owner=owner,
+                                name=repo_name,
+                                full_name=f"{owner}/{repo_name}",
+                                description=repo_data.get("description"),
+                                stars=repo_data.get("stargazers_count", 0),
+                                forks=repo_data.get("forks_count", 0),
+                                open_issues=repo_data.get("open_issues_count", 0),
+                                language=repo_data.get("language"),
+                                topics=repo_data.get("topics", []),
+                                default_branch=repo_data.get("default_branch", "main"),
+                                latest_sha=latest_sha,
+                            )
+                            .returning(Repository.id)
+                        )
+                        result_row = await session.execute(stmt)
+                        actual_repo_id = result_row.scalar_one()
+                        await session.commit()
+                        await embed_repository.kiq(
+                            repo_id=str(actual_repo_id),
+                            owner=owner,
+                            repo_name=repo_name,
+                            file_tree=cached.get("file_tree", []),
+                        )
+            except Exception:
+                logger.exception("Could not ensure embedding for cached %s/%s", owner, repo_name)
             return cached
 
         _emit("file_tree", "started")

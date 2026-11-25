@@ -70,7 +70,9 @@ export default function QAPanel({ taskId }: QAPanelProps) {
 
       {error && (
         <p className="notice" style={{ color: '#f85149', marginBottom: 12 }}>
-          {error}
+          {error.toLowerCase().includes('not been indexed') || error.toLowerCase().includes('embedding')
+            ? 'Q&A is still being set up for this repository. Try again in a moment, or re-run the analysis.'
+            : error}
         </p>
       )}
 
