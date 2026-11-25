@@ -120,7 +120,7 @@ def test_diagram_job_receives_repository_identity_for_source_collection(analysis
     response = client.post("/analysis/analysis-task/diagram")
     assert response.status_code == 200
     enqueue.assert_awaited_once_with(
-        owner="example", repo_name="orders", description="Order processing", tech_stack=["Python"],
+        owner="example", repo_name="orders", description="Order processing", tech_stack=["Python"], github_token=None,
     )
 
 
