@@ -22,7 +22,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from backend.core.config import get_settings, ai_kwargs
 from backend.services.embedding_service import _embed
 
-_MODEL = "ollama/qwen2.5-coder:1.5b"
+_MODEL = "ollama/qwen2.5-coder:7b"
 _FETCH_K = 20       # candidates fetched from pgvector
 _MAX_CHUNKS = 12    # max distinct-file chunks used in context
 _TOKEN_BUDGET = 5_000
@@ -87,6 +87,11 @@ async def _retrieve_chunks(
     repo_id: uuid.UUID,
     question_vector: list[float],
 ) -> list[dict[str, str]]:
+    # Register pgvector codec so asyncpg can serialize the vector parameter
+    raw = await db.connection()
+    await raw.run_sync(lambda c: c.connection.run_async(
+        __import__('pgvector.asyncpg', fromlist=['register_vector']).register_vector
+    ))
     result = await db.execute(
         text("""
             SELECT file_path, content
