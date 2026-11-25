@@ -10,7 +10,7 @@
  * pipeline without mounting the full page and its router/workflow dependencies.
  */
 
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
 import React, { useState } from 'react'
 import type { RepositoryIssue } from '../../api/analyze'
