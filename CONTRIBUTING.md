@@ -46,7 +46,7 @@ If you're new to open source, look for issues tagged `good first issue` — thes
 - Node.js 20+
 - PostgreSQL 16 with the [pgvector](https://github.com/pgvector/pgvector) extension
 - [Valkey](https://valkey.io) 8+ (or any Redis-compatible server)
-- [Ollama](https://ollama.com) with `qwen2.5-coder:7b` pulled (needed for onboarding and architecture generation)
+- [Ollama](https://ollama.com) with `qwen2.5-coder:7b` pulled (needed for onboarding and architecture generation) and `qwen2.5-coder:1.5b` (needed for codebase Q&A)
 - Git
 - A GitHub OAuth app (client ID and secret) for GitHub login, and optionally a GitHub personal access token for higher API rate limits
 

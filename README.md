@@ -37,7 +37,7 @@ flowchart TB
     end
 
     subgraph WK["Background worker · backend/worker/ (TaskIQ)"]
-        tasks["Tasks in worker/tasks/<br/>analyze_repository<br/>generate_diagram"]
+        tasks["Tasks in worker/tasks/<br/>analyze_repository<br/>generate_diagram<br/>embed_repository"]
     end
 
     subgraph DATA["Data stores"]
@@ -50,7 +50,7 @@ flowchart TB
         ol{{"Ollama<br/>local LLM via LiteLLM"}}
     end
 
-    unwired["Built but not wired up yet:<br/>/qa/ask · score_issues · embed_repository"]
+    unwired["Built but not wired up yet:<br/>score_issues"]
 
     user --> pages
     pages --> client
@@ -81,7 +81,7 @@ flowchart TB
 - **Frontend (`frontend/src`)** is a React app. Pages in `pages/` render the workflow screens, and everything that talks to the backend goes through `api/client.ts`, which attaches the JWT to each request.
 - **Backend API (`backend/`)** is a FastAPI app started from `main.py`. Routes in `api/routes/` receive requests and hand the real work to `services/`. Services use the models in `models/` through the async SQLAlchemy session in `db/`.
 - **Background worker (`backend/worker/`)** runs the slow jobs (repository analysis and diagram generation) so HTTP requests return immediately. The API puts a job on a queue in Valkey, a TaskIQ worker picks it up, and the result is stored back in Valkey for 24 hours.
-- **PostgreSQL + pgvector** holds users and contributor profiles. The `issues`, `repositories` and `code_chunks` tables exist too, but nothing fills them yet (see the dashed box in the diagram).
+- **PostgreSQL + pgvector** holds users, contributor profiles, and the `repositories` and `code_chunks` tables that back Q&A. `analyze_repository` saves the repository row and queues `embed_repository`, which fills `code_chunks`. The `issues` table is not filled yet (see the dashed box in the diagram).
 - **Valkey** is the task queue, the task-result store, the 24-hour analysis cache, and the place OAuth CSRF state is kept.
 - **GitHub** is used for OAuth login and for reading repository data. **Ollama** (called through LiteLLM) writes the onboarding plan and the architecture diagram.
 
@@ -146,10 +146,11 @@ Start Ollama, then download the model used by diagram and onboarding generation:
 
 ```bash
 ollama pull qwen2.5-coder:7b
+ollama pull qwen2.5-coder:1.5b   # used by codebase Q&A
 ollama list
 ```
 
-The download is approximately 4.7 GB. Ollama must remain running, and the model
+The 7B download is approximately 4.7 GB (the 1.5B Q&A model is much smaller). Ollama must remain running, and the model
 must appear in `ollama list`. After installing it, reload the repository overview
 to request a new diagram; previously failed jobs are not retried automatically.
 
@@ -198,6 +199,8 @@ python -m pytest backend/tests/ -v
 | `test_auth_token_type.py` | JWT token type field |
 | `test_login_rate_limit.py` | Per-client rate limiting |
 | `test_oauth_routes_registered.py` | OAuth routes registration |
+| `test_qa_route.py` / `test_qa_service.py` | `POST /qa/ask` validation and the Q&A retrieval pipeline |
+| `test_pytest_cov_and_coverage.py` | Test-file counting and coverage measurement in `analyze_repository` |
 
 ### Frontend
 
@@ -224,6 +227,11 @@ npm run test:coverage  # with coverage report
 | `context/AuthContext.test.tsx` | Login/logout state, localStorage/sessionStorage, `useAuth` guard |
 | `components/components-basic.test.tsx` | `DifficultyDots`, `MatchRing`, `ReadinessScore`, `Alert`, `WorkflowIcon`, `WorkflowHeader`, `CodeBlock`, `FileReadList`, `TechStack`, `DirectoryMap`, `TimelineSkeleton` |
 | `components/components-interactive.test.tsx` | `ChipSelector`, `Checklist`, `IssueCard`, `SimilarPRs`, `ImpactChain`, `GitHubButton`, `IssuePreviewCard`, `RepoStats`, `RepoBanner`, `ExperienceSelector` |
+| `components/RepoStats.test.tsx` | Test Coverage tile: percentage, test-file-count fallback, "Not available" |
+| `components/WorkflowLayout-switcher.test.tsx` / `WorkflowLayout-delete.test.tsx` | Repository switcher, locked state, and remove-from-history modal |
+| `hooks/useAnalysis-history.test.ts` | Per-user repository history in `localStorage` |
+| `pages/DashboardPage-duplicate.test.tsx` | "Analysis already exists" prompt |
+| `pages/LoginPage-redirect.test.ts` | Post-login redirect to the latest analysis |
 
 ---
 
@@ -283,9 +291,22 @@ Issues**. Saving your profile opens `/overview/:taskId/issues`; selecting a real
 open issue opens `/overview/:taskId/issues/:issueNumber`. Search and label
 filters use the issues returned by the analysis and exclude pull requests.
 
+The sidebar keeps a per-user history of up to 10 analyzed repositories (stored in
+`localStorage` as `contribiq_repo_history_<userId>`). Use **Switch repository** to
+move between them (available once the current analysis has finished) or the × button
+to remove one from the history; analysis data is not deleted. Analyzing a repository
+that is already in your history asks whether to open it or analyze it again. After
+login you are taken to your most recent analysis, or to the dashboard if you have none.
+Open `/profile` from the header avatar to edit your account, avatar and skills; new
+email signups go through `/onboarding-setup` first.
+
+The overview page shows a test-file count for the analyzed repository in the
+**Test Coverage** tile (a percentage when the worker could measure one, otherwise
+"Not available").
+
 The screens do not use the mockup's sample scores or repository statistics.
 Personalized ranking, difficulty scores, issue-specific AI explanations,
-file/impact analysis, similar-PR search, test coverage, and readiness assessment
+file/impact analysis, similar-PR search, and readiness assessment
 are explicitly unavailable until their backend integrations exist. Onboarding
 generation requires a running Ollama model, and architecture generation also requires the worker (onboarding runs inside the API request).
 Time availability is an unsaved planning preference; checklist state is local
@@ -387,7 +408,7 @@ Selecting an issue triggers a deeper analysis: plain-language AI explanation, wh
 
 | Sub-feature | Status | Key files |
 |---|---|---|
-| pgvector + fastembed embedding pipeline | Implemented; not dispatched | `backend/db/vector.py`, `backend/models/code_chunk.py`, `backend/services/embedding_service.py`, `backend/worker/tasks/embed_repo.py`, `alembic/versions/0008_add_pgvector_code_chunks.py`. fastembed `nomic-embed-code` model (768 dims), filters to text files ≤ 100 KB. `embed_repository` is not registered in `backend/worker/tasks/__init__.py` and nothing dispatches it, so `code_chunks` stays empty until it is wired into the analysis pipeline |
+| pgvector + fastembed embedding pipeline | Implemented; dispatched after analysis | `backend/db/vector.py`, `backend/models/code_chunk.py`, `backend/services/embedding_service.py`, `backend/worker/tasks/embed_repo.py`, `backend/worker/tasks/analyze.py`, `alembic/versions/0008_create_code_chunks.py`. fastembed `BAAI/bge-small-en-v1.5` model (384 dims), filters to text files ≤ 100 KB and embeds them in batches of 20. `analyze_repository` upserts the `repositories` row and queues `embed_repository`. Existing databases created with the earlier 768-dim column need a migration and re-embedding |
 | Issue deep-dive backend | Implemented; needs scored issues | `backend/services/issue_detail_service.py`, `backend/api/routes/issues.py` (`GET /issues/{issue_number}/detail?owner=&repo=`). AI explanation + impact chain via Ollama, similar PRs from GitHub API. It reads the `issues` table, which is only filled by `score_issues`, so it returns 404 until scoring has run. The React detail page does not call this endpoint yet |
 | Issue deep-dive React screen | UI implemented; AI integrations unavailable | `frontend/src/pages/IssueDetailPage.tsx`, `frontend/src/components/Checklist.tsx`, `frontend/src/components/ReadinessScore.tsx`, `frontend/src/components/SimilarPRs.tsx`, `frontend/src/components/ImpactChain.tsx` |
 
@@ -399,8 +420,8 @@ RAG-powered chat. The contributor asks a plain-language question; pgvector finds
 
 | Sub-feature | Status | Key files |
 |---|---|---|
-| Q&A backend (RAG pipeline) | Implemented; needs embeddings | `backend/services/qa_service.py`, `backend/api/routes/qa.py` (`POST /qa/ask`). Pipeline: embed question → top-10 chunks by cosine similarity → assemble prompt with 6,000-token budget → LiteLLM answer |
-| Q&A panel (React) | Component built; not mounted | `frontend/src/components/QAPanel.tsx` (calls `POST /qa/ask`). No page renders it yet, and answers need `code_chunks` populated by the embedding task above |
+| Q&A backend (RAG pipeline) | Done; needs indexed repository | `backend/services/qa_service.py`, `backend/api/routes/qa.py` (`POST /qa/ask` with `{task_id, question}`). The route returns 400 until the analysis is complete and 404 until the repository is indexed. Pipeline: embed question → top-20 chunks by cosine similarity, one per file (max 12) → file-path manifest added for listing/structure questions → prompt with 5,000-token budget → LiteLLM answer using `qwen2.5-coder:1.5b` |
+| Q&A panel (React) | Done | `frontend/src/components/QAPanel.tsx`, rendered on the overview page (`OverviewPage.tsx`). Answers need `code_chunks` filled by the embedding task above |
 
 ---
 
@@ -446,10 +467,9 @@ The **Not started** rows, and the rows marked *not dispatched*, *not mounted* or
 
 **Suggested first contributions (smallest scope first):**
 
-1. **Mount `QAPanel`** — render `frontend/src/components/QAPanel.tsx` on a page (the backend `POST /qa/ask` already exists)
-2. **Wire the readiness score** — call `GET /analysis/result/{task_id}/readiness/{issue_number}` from the issue detail page and display `ReadinessScore`
-3. **Dispatch the background tasks** — trigger `score_issues` (and register/dispatch `embed_repository`) from the analysis pipeline, and expose a matches endpoint for `match_issue`
-4. **Fix GitHub Actions detection** — `tech_stack_service.py` routes `.github/workflows/` through the `endswith` branch instead of substring matching, so `GitHub Actions` is never detected
+1. **Wire the readiness score** — call `GET /analysis/result/{task_id}/readiness/{issue_number}` from the issue detail page and display `ReadinessScore`
+2. **Dispatch the background tasks** — trigger `score_issues` from the analysis pipeline, and expose a matches endpoint for `match_issue`
+3. **Fix GitHub Actions detection** — `tech_stack_service.py` routes `.github/workflows/` through the `endswith` branch instead of substring matching, so `GitHub Actions` is never detected
 
 **Before opening a PR:**
 
@@ -469,8 +489,8 @@ The **Not started** rows, and the rows marked *not dispatched*, *not mounted* or
 | Cache / task broker | Valkey 8 | BSD-3-Clause Redis-compatible fork; `taskiq-redis` client connects to it over the Redis wire protocol |
 | Task queue | TaskIQ | Async-native, no Celery overhead |
 | LLM interface | LiteLLM | Single API for Ollama, Anthropic, OpenAI — swap via env var |
-| Local LLM | Ollama + Qwen2.5-Coder 7B | Runs entirely on-device; no data leaves the machine |
-| Embeddings | fastembed (`nomic-embed-code`) | CPU-only, code-optimised, 768 dims |
+| Local LLM | Ollama + Qwen2.5-Coder (7B for diagrams/onboarding, 1.5B for Q&A) | Runs entirely on-device; no data leaves the machine |
+| Embeddings | fastembed (`BAAI/bge-small-en-v1.5`) | CPU-only, lightweight, 384 dims |
 | Frontend | React 18 + TypeScript + Vite | Fast HMR, strict types |
 | Auth | JWT (python-jose) + bcrypt (passlib) | Stateless access tokens, 7-day refresh tokens |
 | GitHub auth | OAuth2 + CSRF state (Valkey) | Standard flow, state stored server-side |
