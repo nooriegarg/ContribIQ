@@ -12,7 +12,7 @@
 
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { render, screen, act, waitFor } from '@testing-library/react'
-import React, { useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
 
 function makeStorageMock() {
   let store: Record<string, string> = {}

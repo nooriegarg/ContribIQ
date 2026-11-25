@@ -129,7 +129,13 @@ def test_match_issue_calls_llm_and_preserves_issue_identity(monkeypatch):
     ]))
     monkeypatch.setattr(matching_service, "acompletion", completion)
     monkeypatch.setattr(
-        matching_service, "get_settings", lambda: SimpleNamespace(OLLAMA_URL="http://localhost:11434")
+        matching_service, "get_settings", lambda: SimpleNamespace(
+            AI_MODEL="ollama/qwen2.5-coder:7b",
+            OLLAMA_URL="http://localhost:11434",
+            ANTHROPIC_API_KEY=None,
+            ANTHROPIC_AUTH_TOKEN=None,
+            ANTHROPIC_BASE_URL=None,
+        )
     )
     result = asyncio.run(match_issue({"languages": ["Python"]}, issue))
     assert result.issue_id == issue["id"]

@@ -11,7 +11,7 @@
 
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
-import React, { useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
 
 const PLAN_CACHE_VERSION = 'v2'
 
