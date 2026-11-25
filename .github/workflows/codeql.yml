@@ -97,3 +97,6 @@ jobs:
       uses: github/codeql-action/analyze@v4
       with:
         category: "/language:${{matrix.language}}"
+        # Fork PRs don't have security-events:write, so skip the SARIF upload there.
+        # Results are still uploaded on pushes to main and scheduled runs.
+        upload: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository }}
