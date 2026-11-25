@@ -37,11 +37,11 @@ There are existing tools that touch parts of this problem space. ContribIQ is di
 |---|---|---|
 | **GitHub's "good first issue" label** | Tags issues for newcomers | ContribIQ scores each open issue against *your* skill profile and ranks them by fit — not just difficulty |
 | **Swimm / CodeSee** | In-repo documentation and code walkthroughs | ContribIQ is external — it analyses *any* public repo without the maintainer needing to opt in |
-| **GitHub Copilot "explain this"** | Answers code questions in the editor | ContribIQ builds a full RAG index of the repo and answers questions in a browser — no IDE required, no code sent to the cloud |
+| **GitHub Copilot "explain this"** | Answers code questions in the editor | ContribIQ builds a RAG index of the repo and answers questions in a browser — no IDE required, and with the default Ollama setup no code leaves your machine |
 | **OpenDigger / DevStats** | Repository health and contribution metrics | ContribIQ focuses on the *individual contributor onboarding experience*, not aggregate project statistics |
-| **Raw LLM chat (ChatGPT / Claude)** | General-purpose Q&A | ContribIQ grounds answers in actual source files via pgvector retrieval; it does not hallucinate file names or function signatures |
+| **Raw LLM chat (ChatGPT / Claude)** | General-purpose Q&A | ContribIQ grounds answers in the repository's own source files via pgvector retrieval, which reduces made-up file names and function signatures (small local models can still get things wrong) |
 
-The key design constraint that makes these differences possible: **all LLM inference runs locally via Ollama**. No repository code, no user questions, and no contributor profile data leave the developer's machine. This matters for contributors analysing private forks or employer codebases. See [ADR-01](docs/ARCHITECTURE.md#adr-01--async-task-queue-for-repository-analysis) and [ADR-05](docs/ARCHITECTURE.md#adr-05--litellm-as-the-llm-abstraction-layer) for the architectural decisions behind this.
+The key design constraint that makes these differences possible: **LLM inference runs locally via Ollama by default**. With that setup, no repository code, user questions, or contributor profile data are sent to an external LLM provider. Repository files are still read from GitHub, and if you point LiteLLM at a hosted model, that data goes to that provider. This matters for contributors analysing private forks or employer codebases. See [ADR-01](docs/ARCHITECTURE.md#adr-01--async-task-queue-for-repository-analysis) and [ADR-05](docs/ARCHITECTURE.md#adr-05--litellm-as-the-llm-abstraction-layer) for the architectural decisions behind this.
 
 ---
 
