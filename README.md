@@ -172,7 +172,8 @@ fails explicitly instead of returning a generic technology-stack diagram.
 Tests run with `pytest`. No database or running services are needed — all external dependencies are mocked.
 
 ```bash
-# from the repo root
+# from the repo root, in a virtual environment
+python -m pip install -r requirements-dev.txt
 python -m pytest backend/tests/ -v
 ```
 
@@ -372,7 +373,7 @@ scores.
 `MatchResult`. Scoring and matching are backend building blocks; automatic analysis
 pipeline orchestration and a matches HTTP endpoint are not wired up yet.
 
-Focused backend regression tests (install `pytest` in the backend environment):
+Focused backend regression tests (use the development requirements above):
 
 ```bash
 python -m pytest backend/tests/test_issues_matching.py backend/tests/test_github_issues.py backend/tests/test_score_issues.py -q
