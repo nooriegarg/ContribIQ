@@ -12,7 +12,7 @@
 
 import { describe, it, expect } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
-import React, { useState } from 'react'
+import { useState } from 'react'
 import type { RepositoryIssue } from '../../api/analyze'
 import type { IssueMatch } from '../../api/analyze'
 

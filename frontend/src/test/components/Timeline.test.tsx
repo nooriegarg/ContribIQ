@@ -17,7 +17,7 @@ function makeSteps(count: number): OnboardingStep[] {
     title: `Step ${i + 1} Title`,
     description: `Step ${i + 1} description text.`,
     commands: [`echo step-${i + 1}`],
-    files_to_read: [`src/file${i + 1}.ts`],
+    files_to_read: [{ path: `src/file${i + 1}.ts`, purpose: `File ${i + 1}` }],
   }))
 }
 
