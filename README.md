@@ -250,16 +250,19 @@ npm run test:coverage  # with coverage report
 | `utils/issues.test.ts` | `getOpenIssues`, `getIssueLoadError` |
 | `api/client.test.ts` | `apiCall` — headers, auth, error handling |
 | `api/auth.test.ts` | `loginWithEmail`, `registerWithEmail`, `getGitHubOAuthUrl` |
-| `api/analyze.test.ts` | `startAnalysis`, `getAnalysisResult` |
+| `api/analyze.test.ts` | `startAnalysis`, `getAnalysisResult`, `getIssueDetail`, `getReadinessScore` |
 | `api/onboarding-profile.test.ts` | `getOnboardingPlan`, `getProfile`, `updateProfile` |
 | `context/AuthContext.test.tsx` | Login/logout state, localStorage/sessionStorage, `useAuth` guard |
 | `components/components-basic.test.tsx` | `DifficultyDots`, `MatchRing`, `ReadinessScore`, `Alert`, `WorkflowIcon`, `WorkflowHeader`, `CodeBlock`, `FileReadList`, `TechStack`, `DirectoryMap`, `TimelineSkeleton` |
 | `components/components-interactive.test.tsx` | `ChipSelector`, `Checklist`, `IssueCard`, `SimilarPRs`, `ImpactChain`, `GitHubButton`, `IssuePreviewCard`, `RepoStats`, `RepoBanner`, `ExperienceSelector` |
 | `components/RepoStats.test.tsx` | Test Coverage tile: percentage, test-file-count fallback, "Not available" |
 | `components/WorkflowLayout-switcher.test.tsx` / `WorkflowLayout-delete.test.tsx` | Repository switcher, locked state, and remove-from-history modal |
+| `components/WorkflowLayout-taskid-reset.test.tsx` | Switching taskId resets stale result, loading, error, maxStep, and analysisReady state |
 | `hooks/useAnalysis-history.test.ts` | Per-user repository history in `localStorage` |
 | `pages/DashboardPage-duplicate.test.tsx` | "Analysis already exists" prompt |
 | `pages/LoginPage-redirect.test.ts` | Post-login redirect to the latest analysis |
+| `pages/OnboardingPage-cache.test.tsx` | Cache versioning (v2 key served, v1 ignored) and regenerate-button behaviour |
+| `pages/ProfileBack-navigate.test.tsx` | Back button uses `navigate(-1)`, not a hardcoded link |
 
 ---
 
@@ -361,6 +364,7 @@ to the detail view and is not saved to the contributor account.
 | `GET /users/me/profile` | Done | `backend/api/routes/profile.py` |
 | `PUT /users/me/profile` | Done | `backend/api/routes/profile.py` |
 | Profile React screen | Done | `frontend/src/pages/ProfilePage.tsx` — language/interest chips, experience radio, profile API updates, and navigation to issues |
+| Profile back navigation | Done | Both `ProfilePage.tsx` (workflow step 3) and `UserProfilePage.tsx` (`/profile`) use `navigate(-1)` to return to the calling page instead of a hardcoded link |
 
 ---
 
@@ -406,9 +410,9 @@ Open issues fetched from GitHub, scored for beginner-friendliness, then ranked a
 
 | Sub-feature | Status | Key files |
 |---|---|---|
-| Issue model + difficulty scoring | Backend implemented | `backend/models/issue.py`, `backend/services/issues_service.py`, `backend/services/difficulty_service.py`, `backend/worker/tasks/score_issues.py`, `alembic/versions/0007_create_issues.py`. Difficulty is a 1–5 average across files affected, cyclomatic complexity (radon), dependency count (tree-sitter), domain keywords, and estimated line changes |
-| AI issue matching (LLM ranks issues against profile) | Service implemented | `backend/schemas/match.py`, `backend/services/matching_service.py`. Match score rounded and clamped to 0–100, with exactly 3 non-empty plain-language reasons per issue |
-| Issue discovery React screen | UI connected to analysis issues; ranking unavailable | `frontend/src/pages/IssuesPage.tsx`; search, label filters, real GitHub issues, and detail navigation without fabricated match/difficulty scores |
+| Issue model + difficulty scoring | Done | `backend/models/issue.py`, `backend/services/issues_service.py`, `backend/services/difficulty_service.py`, `backend/worker/tasks/score_issues.py`, `alembic/versions/0007_create_issues.py`. Difficulty is a 1–5 average across files affected, cyclomatic complexity (radon), dependency count (tree-sitter), domain keywords, and estimated line changes |
+| AI issue matching (LLM ranks issues against profile) | Done | `backend/schemas/match.py`, `backend/services/matching_service.py`. Match score rounded and clamped to 0–100, with exactly 3 non-empty plain-language reasons per issue |
+| Issue discovery React screen | Done | `frontend/src/pages/IssuesPage.tsx`; search, label filters, real GitHub issues, difficulty dots, and match score ring with ranked display |
 
 The scoring task fetches all pages of open issues, excludes pull requests, and
 refreshes the database cache, including removing issues no longer open. Apply
@@ -436,9 +440,9 @@ Selecting an issue triggers a deeper analysis: plain-language AI explanation, wh
 
 | Sub-feature | Status | Key files |
 |---|---|---|
-| pgvector + fastembed embedding pipeline | Implemented; dispatched after analysis | `backend/db/vector.py`, `backend/models/code_chunk.py`, `backend/services/embedding_service.py`, `backend/worker/tasks/embed_repo.py`, `backend/worker/tasks/analyze.py`, `alembic/versions/0008_create_code_chunks.py`. fastembed `BAAI/bge-small-en-v1.5` model (384 dims), filters to text files ≤ 100 KB and embeds them in batches of 20. `analyze_repository` upserts the `repositories` row and queues `embed_repository`. Existing databases created with the earlier 768-dim column need a migration and re-embedding |
-| Issue deep-dive backend | Implemented; needs scored issues | `backend/services/issue_detail_service.py`, `backend/api/routes/issues.py` (`GET /issues/{issue_number}/detail?owner=&repo=`). AI explanation + impact chain via Ollama, similar PRs from GitHub API. It reads the `issues` table, which is only filled by `score_issues`, so it returns 404 until scoring has run. The React detail page does not call this endpoint yet |
-| Issue deep-dive React screen | UI implemented; AI integrations unavailable | `frontend/src/pages/IssueDetailPage.tsx`, `frontend/src/components/Checklist.tsx`, `frontend/src/components/ReadinessScore.tsx`, `frontend/src/components/SimilarPRs.tsx`, `frontend/src/components/ImpactChain.tsx` |
+| pgvector + fastembed embedding pipeline | Done | `backend/db/vector.py`, `backend/models/code_chunk.py`, `backend/services/embedding_service.py`, `backend/worker/tasks/embed_repo.py`, `backend/worker/tasks/analyze.py`, `alembic/versions/0008_create_code_chunks.py`. fastembed `BAAI/bge-small-en-v1.5` model (384 dims), filters to text files ≤ 100 KB and embeds them in batches of 20. `analyze_repository` upserts the `repositories` row and queues `embed_repository`. Existing databases created with the earlier 768-dim column need a migration and re-embedding |
+| Issue deep-dive backend | Done | `backend/services/issue_detail_service.py`, `backend/api/routes/issues.py` (`GET /issues/{issue_number}/detail?owner=&repo=`). AI explanation + impact chain via Ollama, similar PRs from GitHub API. Requires `score_issues` to have run first (issues table must be populated) |
+| Issue deep-dive React screen | Done | `frontend/src/pages/IssueDetailPage.tsx`, `frontend/src/components/Checklist.tsx`, `frontend/src/components/ReadinessScore.tsx`, `frontend/src/components/SimilarPRs.tsx`, `frontend/src/components/ImpactChain.tsx`. All tabs (Understanding, Similar PRs, Readiness) are wired to backend endpoints |
 
 ---
 
@@ -459,7 +463,7 @@ Multi-dimension score (0–100%) showing how prepared the contributor is to atte
 
 | Sub-feature | Status | Key files |
 |---|---|---|
-| Readiness score calculation | Backend implemented; not shown in UI | `backend/services/readiness_service.py`, `GET /analysis/result/{task_id}/readiness/{issue_number}`. Five weighted dimensions: Repository Understanding (25%), Environment Setup (20%), Code Understanding (25%), Testing Knowledge (15%), Issue Understanding (15%). `frontend/src/components/ReadinessScore.tsx` exists, but the detail page does not call the endpoint and the score is reported as unavailable |
+| Readiness score calculation | Done | `backend/services/readiness_service.py`, `GET /analysis/result/{task_id}/readiness/{issue_number}`. Five weighted dimensions: Repository Understanding (25%), Environment Setup (20%), Code Understanding (25%), Testing Knowledge (15%), Issue Understanding (15%). Displayed in the Readiness tab of the issue detail page via `frontend/src/components/ReadinessScore.tsx` — loaded lazily when the tab is first opened |
 
 ---
 
@@ -495,8 +499,8 @@ The **Not started** rows, and the rows marked *not dispatched*, *not mounted* or
 
 **Suggested first contributions (smallest scope first):**
 
-1. **Wire the readiness score** — call `GET /analysis/result/{task_id}/readiness/{issue_number}` from the issue detail page and display `ReadinessScore`
-2. **Dispatch the background tasks** — trigger `score_issues` from the analysis pipeline, and expose a matches endpoint for `match_issue`
+1. **Wire `score_issues` into the analysis pipeline** — call `score_issues.kiq()` from `analyze_repository` after issues are fetched so difficulty and match scores populate automatically
+2. **Expose a `/analysis/result/{task_id}/matches` endpoint** — returns ranked issues from `matching_service.py` for the current contributor profile
 3. **Fix GitHub Actions detection** — `tech_stack_service.py` routes `.github/workflows/` through the `endswith` branch instead of substring matching, so `GitHub Actions` is never detected
 
 **Before opening a PR:**

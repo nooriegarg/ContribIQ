@@ -81,7 +81,7 @@ npm run dev
 # → http://localhost:5173
 ```
 
-The full setup, including the local Ollama model, is described in the README's [Local Setup](README.md#local-setup) section. `docker-compose.yml` currently defines the `db` and `valkey` services only in a usable form (the `api`, `worker` and `frontend` images need Dockerfiles that don't exist yet), so run the application services directly as shown above.
+The full setup, including the local Ollama model, is described in the README's [Local Setup](README.md#local-setup) section. You can run the full stack with Docker Compose (`docker compose up --build`) or run the services directly as shown above. The Docker Compose stack includes Dockerfiles for the API, worker, and frontend.
 
 If you run into any issues setting up, please open an issue and we'll help you out.
 

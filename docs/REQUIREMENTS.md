@@ -68,8 +68,8 @@ Maintainers face the mirror problem: they want contributors, but onboarding them
 
 | ID | Requirement |
 |---|---|
-| FR-18 | Selecting an issue shall provide: AI explanation, affected files, prerequisites, impact chain, similar merged PRs (vector similarity), and a contribution checklist |
-| FR-19 | A readiness score (0–100 %) shall indicate how prepared the contributor is to attempt a specific issue, based on five weighted dimensions |
+| FR-18 | Selecting an issue shall provide: AI explanation, affected files, prerequisites, impact chain, similar merged PRs (vector similarity), and a contribution checklist — all wired to `GET /issues/{issue_number}/detail` |
+| FR-19 | A readiness score (0–100 %) shall indicate how prepared the contributor is to attempt a specific issue, based on five weighted dimensions — displayed in the Readiness tab via `GET /analysis/result/{task_id}/readiness/{issue_number}` |
 
 ### 3.7 Codebase Q&A
 

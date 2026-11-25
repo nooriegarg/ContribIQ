@@ -86,7 +86,7 @@ The core design constraint is **local-first AI**: all LLM inference runs on the 
 
 **Context:** The project uses Ollama for local inference today. During development it is useful to swap in cloud models (Anthropic, OpenAI) for faster iteration without changing call sites.
 
-**Decision:** Route all LLM calls through [LiteLLM](https://github.com/BerriAI/litellm). The model name is an environment variable (`OLLAMA_MODEL`, `QA_MODEL`). Switching to a cloud model is a one-line config change.
+**Decision:** Route all LLM calls through [LiteLLM](https://github.com/BerriAI/litellm). The model name is a single environment variable (`AI_MODEL`). Switching to a cloud model (Anthropic via direct API or via the SAP Hyperspace proxy) is a one-line config change. The `ai_kwargs()` helper in `backend/core/config.py` centralises the routing logic and injects the correct base URL and auth headers depending on which model is configured.
 
 **Alternatives considered:**
 - **Call Ollama directly:** Simpler but locks every call site to Ollama's API; makes future cloud option harder.
