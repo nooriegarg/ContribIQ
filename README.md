@@ -15,6 +15,17 @@ An AI-powered open-source contributor onboarding assistant. Point it at any GitH
 - [Contributing](#contributing)
 - [Tech Stack Details](#tech-stack-details)
 
+### Project docs
+
+| Document | What it covers |
+|---|---|
+| [docs/REQUIREMENTS.md](docs/REQUIREMENTS.md) | Problem statement, functional and non-functional requirements |
+| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | Architecture overview and decision records (ADRs) |
+| [CHANGELOG.md](CHANGELOG.md) | Release history and notable changes per version |
+| [CONTRIBUTING.md](CONTRIBUTING.md) | How to set up the project and open a pull request |
+| [SECURITY.md](SECURITY.md) | How to report security vulnerabilities |
+| [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) | Community conduct expectations |
+
 ---
 
 ## Architecture
