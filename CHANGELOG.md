@@ -13,6 +13,9 @@ Versions follow [Semantic Versioning](https://semver.org/).
 - Wire `score_issues` task into the analysis pipeline so issue difficulty and match scores reach the UI automatically
 - Expose a `/issues/matches` endpoint for ranked issue recommendations
 - Display readiness score on the issue detail page
+- Upgraded architecture diagram to gitdiagram-style 2-stage Claude pipeline with subgraphs, color classes, and deterministic Mermaid compiler
+- gitdiagram file scoring logic for better source file selection
+- Claude / SAP Hyperspace proxy support for faster diagram generation
 
 ---
 
