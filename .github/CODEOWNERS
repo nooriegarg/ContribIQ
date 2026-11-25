@@ -1,0 +1,5 @@
+# CODEOWNERS
+# All four core maintainers review every change.
+# See: https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
+
+* @nooriegarg @manviisaxena @AmanRaj27072003 @yoman3940q
