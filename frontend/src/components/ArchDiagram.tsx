@@ -61,7 +61,7 @@ export default function ArchDiagram({ taskId, repoName }: ArchDiagramProps) {
       clearInterval(poll)
       setError('Diagram generation timed out. Check that the worker and Ollama model are running.')
       setStatus('error')
-    }, 120000)
+    }, 240000)
     const poll = setInterval(() => {
       apiCall<{ mermaid_syntax: string; status: string; source_files?: string[] }>(`/analysis/diagram/${diagramTaskId}`)
         .then(({ mermaid_syntax, status, source_files }) => {
@@ -93,8 +93,22 @@ export default function ArchDiagram({ taskId, repoName }: ArchDiagramProps) {
     if (!syntax || !containerRef.current) return
 
     mermaid.initialize({
-      startOnLoad: false, theme: 'base', securityLevel: 'strict',
-      themeVariables: { primaryColor: '#D1EFFF', primaryTextColor: '#002A86', primaryBorderColor: '#1B90FF', lineColor: '#89D1FF', fontFamily: 'system-ui, sans-serif' },
+      startOnLoad: false,
+      theme: 'base',
+      securityLevel: 'antiscript',
+      flowchart: { curve: 'basis', useMaxWidth: true },
+      themeVariables: {
+        primaryColor: '#dbeafe',
+        primaryTextColor: '#172554',
+        primaryBorderColor: '#2563eb',
+        lineColor: '#94a3b8',
+        secondaryColor: '#f1f5f9',
+        tertiaryColor: '#f8fafc',
+        fontFamily: 'system-ui, sans-serif',
+        fontSize: '14px',
+        clusterBkg: '#f8fafc',
+        clusterBorder: '#cbd5e1',
+      },
     })
     mermaid
       .render(`arch-${repoName.replace(/\W/g, '-')}-${retryCount}`, syntax)
@@ -133,10 +147,16 @@ export default function ArchDiagram({ taskId, repoName }: ArchDiagramProps) {
       </h2>
       {status === 'generating' && <p className="muted" role="status">Reading repository source and generating application architecture...</p>}
       {status === 'error' && (
-        <div className="notice error" role="alert">
-          <p>{error}</p>
-          <button className="btn btn-s mt12" onClick={handleRetry}>Try again</button>
-        </div>
+        (error.toLowerCase().includes('library') || error.toLowerCase().includes('not enough')) ? (
+          <div className="notice" role="status">
+            <p>This is a framework or library repo — architecture diagrams apply to applications <em>built with</em> {repoName.split('/')[1] ?? repoName}, not the framework itself.</p>
+          </div>
+        ) : (
+          <div className="notice error" role="alert">
+            <p>{error}</p>
+            <button className="btn btn-s mt12" onClick={handleRetry}>Try again</button>
+          </div>
+        )
       )}
       <div className="arch-wrap" ref={containerRef} />
       {status === 'done' && sourceFiles.length > 0 && <p className="muted mt12">Inferred from {sourceFiles.join(', ')}. Shows application components and connections, not a verified runtime trace.</p>}

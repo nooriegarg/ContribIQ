@@ -115,12 +115,14 @@ def test_diagram_job_receives_repository_identity_for_source_collection(analysis
     )))
     monkeypatch.setattr(routes, "get_key", AsyncMock(return_value=None))
     monkeypatch.setattr(routes, "set_key", AsyncMock())
+    monkeypatch.setattr(routes, "get_settings", lambda: SimpleNamespace(GITHUB_TOKEN=None))
     enqueue = AsyncMock(return_value=SimpleNamespace(task_id="diagram-task"))
     monkeypatch.setattr(routes.generate_diagram, "kiq", enqueue)
     response = client.post("/analysis/analysis-task/diagram")
     assert response.status_code == 200
     enqueue.assert_awaited_once_with(
         owner="example", repo_name="orders", description="Order processing", tech_stack=["Python"],
+        github_token=None,
     )
 
 

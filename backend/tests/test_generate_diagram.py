@@ -16,11 +16,13 @@ def diagram(monkeypatch):
     return mod
 
 
-def test_generate_diagram_has_no_github_token_parameter(diagram):
+def test_generate_diagram_github_token_is_optional(diagram):
     task = diagram.generate_diagram
     fn = getattr(task, "original_func", getattr(task, "__wrapped__", task))
     sig = inspect.signature(fn)
-    assert "github_token" not in sig.parameters
+    # github_token is optional so callers don't need to pass it
+    param = sig.parameters.get("github_token")
+    assert param is None or param.default is not inspect.Parameter.empty
 
 
 def test_generate_diagram_passes_settings_token_to_github_client(diagram, monkeypatch):

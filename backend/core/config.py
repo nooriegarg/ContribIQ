@@ -28,6 +28,12 @@ class Settings(BaseSettings):
     # Ollama LLM server
     OLLAMA_URL: str = "http://localhost:11434"
 
+    # Anthropic (Claude) — used for diagram generation when set
+    ANTHROPIC_API_KEY: str | None = None
+    # LiteLLM-compatible base URL override (e.g. a local proxy)
+    ANTHROPIC_BASE_URL: str | None = None
+    ANTHROPIC_AUTH_TOKEN: str | None = None
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",

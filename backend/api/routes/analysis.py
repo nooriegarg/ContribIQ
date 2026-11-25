@@ -17,11 +17,10 @@ from backend.models.profile import ContributorProfile
 from backend.models.user import User
 from backend.services.onboarding_service import generate_onboarding_plan
 from backend.services.readiness_service import calculate_readiness
-from backend.services.valkey_client import get_key
+from backend.services.valkey_client import get_key, set_key, delete_key
 from backend.worker.broker import broker
 from backend.worker.tasks.analyze import analyze_repository
 from backend.worker.tasks.generate_diagram import generate_diagram
-from backend.services.valkey_client import get_key, set_key, delete_key
 
 logger = logging.getLogger(__name__)
 
@@ -160,11 +159,13 @@ async def start_diagram(
         await delete_key(cache_key)
 
     settings = get_settings()
+    github_token = await get_key(f"gh-token:{current_user.id}") or settings.GITHUB_TOKEN
     task = await generate_diagram.kiq(
         owner=data["owner"],
         repo_name=data["repo"],
         description=data.get("metadata", {}).get("description"),
         tech_stack=data.get("tech_stack", []),
+        github_token=github_token,
     )
     await set_key(cache_key, task.task_id, ttl=86400)
     return {"diagram_task_id": task.task_id}
@@ -184,7 +185,8 @@ async def get_diagram(
         return {"status": "pending", "mermaid_syntax": None}
 
     if result.is_err:
-        raise HTTPException(status_code=500, detail="Diagram generation failed")
+        detail = str(result.error) if result.error else "Diagram generation failed"
+        raise HTTPException(status_code=500, detail=detail)
 
     return result.return_value
 
@@ -208,7 +210,14 @@ async def get_onboarding_plan(
     if (result.return_value or {}).get("status") != "completed":
         raise HTTPException(status_code=500, detail="Repository analysis failed")
 
+    cache_key = f"onboarding:{task_id}"
+    cached_plan = await get_key(cache_key)
+    if cached_plan:
+        return json.loads(cached_plan)
+
     plan = await generate_onboarding_plan(result.return_value or {})
+
+    await set_key(cache_key, json.dumps(plan), ttl=86400)
     return plan
 
 
