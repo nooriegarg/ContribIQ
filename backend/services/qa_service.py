@@ -19,7 +19,7 @@ from litellm import acompletion, token_counter
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.core.config import get_settings
+from backend.core.config import get_settings, ai_kwargs
 from backend.services.embedding_service import _embed
 
 _MODEL = "ollama/qwen2.5-coder:1.5b"
@@ -111,14 +111,14 @@ async def _retrieve_chunks(
     return unique
 
 
-def _build_context(chunks: list[dict[str, str]]) -> tuple[str, list[str]]:
+def _build_context(chunks: list[dict[str, str]], model: str) -> tuple[str, list[str]]:
     parts: list[str] = []
     sources: list[str] = []
     total_tokens = 0
 
     for chunk in chunks:
         snippet = f"# {chunk['file_path']}\n{chunk['content']}\n"
-        snippet_tokens = token_counter(model=_MODEL, text=snippet)
+        snippet_tokens = token_counter(model=model, text=snippet)
         if total_tokens + snippet_tokens > _TOKEN_BUDGET:
             break
         parts.append(snippet)
@@ -150,7 +150,7 @@ async def ask(
             "sources": [],
         }
 
-    context, sources = _build_context(chunks)
+    context, sources = _build_context(chunks, settings.AI_MODEL)
 
     if _is_structural_question(question):
         all_paths = await _get_all_file_paths(db, repo_uuid)
@@ -160,8 +160,7 @@ async def ask(
         prompt = _QA_PROMPT_NO_MANIFEST.format(context=context, question=question)
 
     response = await acompletion(
-        model=_MODEL,
-        api_base=settings.OLLAMA_URL,
+        **ai_kwargs(settings),
         messages=[{"role": "user", "content": prompt}],
         temperature=0.1,
     )

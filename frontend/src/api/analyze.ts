@@ -62,6 +62,16 @@ export async function startAnalysis(req: AnalysisRequest): Promise<{ task_id: st
   }
 }
 
+export interface IssueMatch {
+  issue_number: number
+  match_pct: number
+  reasons: string[]
+}
+
+export async function getMatchedIssues(taskId: string): Promise<IssueMatch[]> {
+  return apiCall<IssueMatch[]>(`/analysis/result/${taskId}/matches`)
+}
+
 export async function getAnalysisResult(taskId: string): Promise<AnalysisResult> {
   return apiCall<AnalysisResult>(`/analysis/result/${taskId}`)
 }
@@ -136,4 +146,38 @@ export function subscribeToProgress(
 
   void readProgress()
   return controller
+}
+
+export interface IssueDetail {
+  number: number
+  title: string
+  body: string | null
+  url: string | null
+  labels: string[]
+  difficulty: number
+  explanation: string
+  files_affected: { path: string; role: string }[]
+  prerequisites: { title: string; description: string }[]
+  impact_chain: string[]
+  similar_prs: { number: number; title: string; url: string | null }[]
+  checklist: { step: string }[]
+}
+
+export async function getIssueDetail(
+  owner: string,
+  repo: string,
+  issueNumber: number,
+): Promise<IssueDetail> {
+  return apiCall<IssueDetail>(
+    `/issues/${issueNumber}/detail?owner=${encodeURIComponent(owner)}&repo=${encodeURIComponent(repo)}`,
+  )
+}
+
+export interface ReadinessResult {
+  overall: number
+  dimensions: { key: string; label: string; score: number; weight: number }[]
+}
+
+export async function getReadinessScore(taskId: string, issueNumber: number): Promise<ReadinessResult> {
+  return apiCall<ReadinessResult>(`/analysis/result/${taskId}/readiness/${issueNumber}`)
 }

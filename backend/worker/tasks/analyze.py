@@ -228,4 +228,8 @@ async def analyze_repository(owner: str, repo_name: str, github_token: str | Non
     except Exception:
         logger.exception("Could not trigger embedding for %s/%s", owner, repo_name)
 
+    # Kick off issue scoring in the background so matches are ready for the issues page
+    from backend.worker.tasks.score_issues import score_issues
+    await score_issues.kiq(owner=owner, repo_name=repo_name, github_token=github_token)
+
     return result

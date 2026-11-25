@@ -72,6 +72,22 @@ export default function WorkflowLayout({ hero = false }: { hero?: boolean }) {
   const firstIssue = result ? getOpenIssues(result)[0] : undefined
   const issueNumber = detail?.params.issueNumber ?? firstIssue?.number
 
+  // When taskId changes (repo switch), immediately load from cache for new taskId or show loading
+  useEffect(() => {
+    if (hero) return
+    try {
+      const cached = sessionStorage.getItem(`analysis:${taskId}`)
+      setResult(cached ? JSON.parse(cached) : null)
+      setLoading(!cached)
+      setError('')
+      setMaxStep(loadProgress(taskId))
+      setAnalysisReady(isAnalysisReady(taskId))
+    } catch {
+      setResult(null)
+      setLoading(true)
+    }
+  }, [taskId, hero])
+
   useEffect(() => {
     if (hero) return
     if (currentStep > maxStep) {

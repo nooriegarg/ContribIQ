@@ -15,6 +15,7 @@ from backend.db.session import get_db
 from backend.models.issue import Issue
 from backend.models.profile import ContributorProfile
 from backend.models.user import User
+from backend.services.matching_service import match_issue
 from backend.services.onboarding_service import generate_onboarding_plan
 from backend.services.readiness_service import calculate_readiness
 from backend.services.valkey_client import get_key, set_key, delete_key
@@ -279,3 +280,65 @@ async def get_readiness_score(
 
 def _sse(event: str, data: dict) -> str:
     return f"event: {event}\ndata: {json.dumps(data)}\n\n"
+
+
+@router.get("/result/{task_id}/matches")
+async def get_matched_issues(
+    task_id: str,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    try:
+        result = await _get_task_result(task_id)
+    except Exception:
+        raise HTTPException(status_code=404, detail="Analysis task not found")
+
+    if result is None:
+        raise HTTPException(status_code=202, detail="Analysis still in progress")
+
+    if result.is_err or (result.return_value or {}).get("status") != "completed":
+        raise HTTPException(status_code=500, detail="Analysis task failed")
+
+    analysis_data = result.return_value or {}
+    full_name = f"{analysis_data.get('owner', '')}/{analysis_data.get('repo', '')}"
+
+    profile_row = await db.execute(
+        select(ContributorProfile).where(ContributorProfile.user_id == current_user.id)
+    )
+    profile = profile_row.scalar_one_or_none()
+    if profile is None:
+        raise HTTPException(status_code=404, detail="Profile not found. Complete Your Profile step first.")
+
+    profile_dict = {
+        "languages": profile.languages or [],
+        "experience": profile.experience or "beginner",
+        "interests": profile.interests or [],
+    }
+
+    issues_row = await db.execute(
+        select(Issue).where(Issue.repo_full_name == full_name)
+    )
+    issues = issues_row.scalars().all()
+    if not issues:
+        raise HTTPException(status_code=404, detail="No scored issues found. Run an analysis first.")
+
+    matches = await asyncio.gather(*[
+        match_issue(profile_dict, {
+            "id": issue.id,
+            "number": issue.number,
+            "title": issue.title,
+            "difficulty": issue.difficulty,
+            "labels": issue.labels or [],
+            "files_affected": issue.files_affected or [],
+            "estimated_hours": issue.estimated_hours,
+        })
+        for issue in issues
+    ])
+
+    ranked = sorted(
+        [{"issue_number": issue.number, "match_pct": m.match_pct, "reasons": m.reasons}
+         for issue, m in zip(issues, matches)],
+        key=lambda x: x["match_pct"],
+        reverse=True,
+    )
+    return ranked
