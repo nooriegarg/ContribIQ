@@ -5,7 +5,7 @@ from typing import Annotated
 from litellm import acompletion
 from pydantic import BaseModel, Field, StringConstraints
 
-from backend.core.config import get_settings
+from backend.core.config import get_settings, ai_kwargs
 
 _MERMAID_UNSAFE = re.compile(r'[&<>"`\'\\|{}\[\]()]')
 _TEXT = Annotated[str, StringConstraints(strict=True, strip_whitespace=True, min_length=1, max_length=160)]

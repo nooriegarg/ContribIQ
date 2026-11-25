@@ -90,7 +90,7 @@ def test_build_context_respects_token_budget(monkeypatch):
             {"file_path": "b.py", "content": "bbb"},
             {"file_path": "c.py", "content": "ccc"},  # would push total to 6000
         ]
-        context, sources = _build_context(chunks)
+        context, sources = _build_context(chunks, "ollama/qwen2.5-coder:7b")
 
     assert "a.py" in context
     assert "b.py" in context
@@ -116,7 +116,7 @@ def _make_ask_mocks(monkeypatch, question: str, is_structural: bool):
 
     # _build_context → returns a context string and sources list
     monkeypatch.setattr(qa_service, "_build_context",
-                        lambda c: ("# frontend/src/App.tsx\nconst App = () => null\n", ["frontend/src/App.tsx"]))
+                        lambda c, model: ("# frontend/src/App.tsx\nconst App = () => null\n", ["frontend/src/App.tsx"]))
 
     completion = MagicMock()
     completion.choices = [MagicMock()]

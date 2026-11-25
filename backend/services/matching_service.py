@@ -7,7 +7,7 @@ from typing import Any
 
 from litellm import acompletion
 
-from backend.core.config import get_settings
+from backend.core.config import get_settings, ai_kwargs
 from backend.schemas.match import MatchResult
 
 REASON_COUNT = 3
@@ -83,8 +83,7 @@ def parse_match_response(raw: str) -> tuple[int, list[str]]:
 async def match_issue(profile: dict[str, Any], issue: dict[str, Any]) -> MatchResult:
     settings = get_settings()
     response = await acompletion(
-        model="ollama/qwen2.5-coder:7b",
-        api_base=settings.OLLAMA_URL,
+        **ai_kwargs(settings),
         messages=[{"role": "user", "content": build_match_prompt(profile, issue)}],
         temperature=0.2,
     )

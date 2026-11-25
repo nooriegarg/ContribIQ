@@ -114,6 +114,8 @@ def test_result_includes_test_file_count_and_coverage_pct(mock_analysis_env):
         patch("backend.worker.tasks.analyze.detect_tech_stack", return_value=["Python"]),
         patch("backend.worker.tasks.analyze.map_directories", return_value=[]),
         patch("sqlalchemy.dialects.postgresql.insert", MagicMock()),
+        patch("backend.worker.tasks.embed_repo.embed_repository.kiq", AsyncMock()),
+        patch("backend.worker.tasks.score_issues.score_issues.kiq", AsyncMock()),
     ):
         result = asyncio.run(analyze_repository("test", "repo"))
 
@@ -140,6 +142,8 @@ def test_result_has_none_coverage_when_no_source_files(mock_analysis_env):
         patch("backend.worker.tasks.analyze.detect_tech_stack", return_value=[]),
         patch("backend.worker.tasks.analyze.map_directories", return_value=[]),
         patch("sqlalchemy.dialects.postgresql.insert", MagicMock()),
+        patch("backend.worker.tasks.embed_repo.embed_repository.kiq", AsyncMock()),
+        patch("backend.worker.tasks.score_issues.score_issues.kiq", AsyncMock()),
     ):
         result = asyncio.run(analyze_repository("test", "repo"))
 
@@ -164,6 +168,8 @@ def test_test_file_count_zero_when_no_test_files(mock_analysis_env):
         patch("backend.worker.tasks.analyze.detect_tech_stack", return_value=["Python"]),
         patch("backend.worker.tasks.analyze.map_directories", return_value=[]),
         patch("sqlalchemy.dialects.postgresql.insert", MagicMock()),
+        patch("backend.worker.tasks.embed_repo.embed_repository.kiq", AsyncMock()),
+        patch("backend.worker.tasks.score_issues.score_issues.kiq", AsyncMock()),
     ):
         result = asyncio.run(analyze_repository("test", "repo"))
 
@@ -194,6 +200,8 @@ def test_test_file_count_detects_various_patterns(mock_analysis_env):
         patch("backend.worker.tasks.analyze.detect_tech_stack", return_value=["Python"]),
         patch("backend.worker.tasks.analyze.map_directories", return_value=[]),
         patch("sqlalchemy.dialects.postgresql.insert", MagicMock()),
+        patch("backend.worker.tasks.embed_repo.embed_repository.kiq", AsyncMock()),
+        patch("backend.worker.tasks.score_issues.score_issues.kiq", AsyncMock()),
     ):
         result = asyncio.run(analyze_repository("test", "repo"))
 

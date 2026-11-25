@@ -1,20 +1,64 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { getMatchedIssues, type IssueMatch } from '../api/analyze'
 import { useWorkflow } from '../hooks/useWorkflow'
 import { getIssueLoadError, getOpenIssues } from '../utils/issues'
 import WorkflowHeader from '../components/WorkflowHeader'
 import WorkflowIcon from '../components/WorkflowIcon'
 
+function MatchRing({ pct }: { pct: number }) {
+  const r = 26
+  const circ = 2 * Math.PI * r
+  const fill = (pct / 100) * circ
+  const color = pct >= 70 ? '#22c55e' : pct >= 40 ? '#f59e0b' : '#6b7280'
+  return (
+    <div className="match-ring" aria-label={`AI match score ${pct}%`}>
+      <svg viewBox="0 0 62 62" aria-hidden="true">
+        <circle cx="31" cy="31" r={r} fill="none" stroke="#EAECEE" strokeWidth="5" />
+        <circle cx="31" cy="31" r={r} fill="none" stroke={color} strokeWidth="5"
+          strokeDasharray={`${fill} ${circ}`} strokeLinecap="round"
+          transform="rotate(-90 31 31)" />
+      </svg>
+      <span className="match-text"><span className="match-pct">{pct}%</span><span className="match-lbl">Match</span></span>
+    </div>
+  )
+}
+
 export default function IssuesPage() {
-  const { basePath, result } = useWorkflow()
+  const { taskId, basePath, result } = useWorkflow()
   const [query, setQuery] = useState('')
   const [label, setLabel] = useState('')
+  const [matches, setMatches] = useState<IssueMatch[] | null>(null)
+  const [matchError, setMatchError] = useState('')
+  const [matchLoading, setMatchLoading] = useState(true)
+
+  useEffect(() => {
+    if (!taskId) return
+    let active = true
+    setMatchLoading(true)
+    setMatchError('')
+    getMatchedIssues(taskId)
+      .then(data => { if (active) setMatches(data) })
+      .catch(err => { if (active) setMatchError(err instanceof Error ? err.message : 'Unable to load ranked issues.') })
+      .finally(() => { if (active) setMatchLoading(false) })
+    return () => { active = false }
+  }, [taskId])
+
   if (!result) return null
+
   const issues = getOpenIssues(result)
   const issueError = getIssueLoadError(result)
+  const matchMap = new Map(matches?.map(m => [m.issue_number, m]) ?? [])
+
+  const rankedIssues = [...issues].sort((a, b) => {
+    const ma = matchMap.get(a.number)?.match_pct ?? -1
+    const mb = matchMap.get(b.number)?.match_pct ?? -1
+    return mb - ma
+  })
+
   const labels = [...new Set(issues.flatMap(issue => issue.labels.map(item => item.name)))].sort((a, b) => a.localeCompare(b))
   const search = query.trim().toLowerCase()
-  const filtered = issues.filter(issue =>
+  const filtered = rankedIssues.filter(issue =>
     (!label || issue.labels.some(item => item.name === label))
     && (!search || `${issue.number} ${issue.title} ${issue.body ?? ''}`.toLowerCase().includes(search.replace(/^#(?=\d)/, ''))),
   )
@@ -28,7 +72,8 @@ export default function IssuesPage() {
         <div className="profile-chips">{result.tech_stack.map(tech => <span className="p-chip" key={tech}>{tech}</span>)}<span className="p-chip">GitHub issue data</span></div>
       </div>
       <div className="page-body">
-        <p className="notice">These are real repository issues, not personalized recommendations yet. AI match scores, difficulty scores, and match reasons are not connected to this screen.</p>
+        {matchLoading && <p className="notice">Ranking issues based on your profile...</p>}
+        {!matchLoading && matchError && <p className="notice">{matchError}</p>}
         {issueError ? <div className="notice error" role="alert">{issueError}<p className="mt8"><Link className="btn btn-s" to="/dashboard">Run a new analysis</Link></p></div> : (
           <>
             <div className="issue-filters">
@@ -36,22 +81,38 @@ export default function IssuesPage() {
               <label>Label<select value={label} onChange={event => setLabel(event.target.value)}><option value="">All labels</option>{labels.map(name => <option value={name} key={name}>{name}</option>)}</select></label>
             </div>
             <p className="muted filter-count" role="status">{filtered.length} {filtered.length === 1 ? 'issue' : 'issues'} shown</p>
-            {filtered.map(issue => (
-              <Link className="issue-card" to={`${basePath}/issues/${issue.number}`} key={issue.number}>
-                <div className="match-ring" aria-label="AI match score unavailable">
-                  <svg viewBox="0 0 62 62" aria-hidden="true"><circle cx="31" cy="31" r="26" fill="none" stroke="#EAECEE" strokeWidth="5" /></svg>
-                  <span className="match-text"><span className="match-pct">--</span><span className="match-lbl">Unscored</span></span>
-                </div>
-                <div className="issue-body">
-                  <div className="issue-top"><span className="issue-num">#{issue.number}</span><h2 className="issue-ttl">{issue.title}</h2><span className="badge badge-gray">Not ranked</span></div>
-                  <p className="issue-desc">{issue.body ? `${issue.body.slice(0, 220)}${issue.body.length > 220 ? '...' : ''}` : 'No description provided. Open the issue to explore contribution guidance.'}</p>
-                  <div className="issue-tags">{issue.labels.map(item => <span className={`badge ${item.name.toLowerCase() === 'good first issue' ? 'badge-green' : 'badge-blue'}`} key={item.name}>{item.name}</span>)}</div>
-                  <div className="issue-reasons"><p className="muted">View issue details and your contribution checklist<WorkflowIcon name="arrow" /></p></div>
-                </div>
-                <span className="issue-arr"><WorkflowIcon name="arrow" /></span>
-              </Link>
-            ))}
-            {filtered.length === 0 && <div className="card"><h2 className="ctitle">{issues.length === 0 ? 'No open issues in this analysis' : 'No issues match your filters'}</h2><p className="muted">{issues.length === 0 ? 'Try another repository, or check GitHub for newer issues.' : 'Try a different search or select All labels.'}</p>{(query || label) && <button className="btn btn-s mt12" onClick={() => { setQuery(''); setLabel('') }}>Clear filters</button>}</div>}
+            {filtered.map(issue => {
+              const match = matchMap.get(issue.number)
+              return (
+                <Link className="issue-card" to={`${basePath}/issues/${issue.number}`} key={issue.number}>
+                  {match ? (
+                    <MatchRing pct={match.match_pct} />
+                  ) : (
+                    <div className="match-ring" aria-label="AI match score unavailable">
+                      <svg viewBox="0 0 62 62" aria-hidden="true"><circle cx="31" cy="31" r="26" fill="none" stroke="#EAECEE" strokeWidth="5" /></svg>
+                      <span className="match-text"><span className="match-pct">--</span><span className="match-lbl">Unscored</span></span>
+                    </div>
+                  )}
+                  <div className="issue-body">
+                    <div className="issue-top">
+                      <span className="issue-num">#{issue.number}</span>
+                      <h2 className="issue-ttl">{issue.title}</h2>
+                      {match
+                        ? <span className={`badge ${match.match_pct >= 70 ? 'badge-green' : match.match_pct >= 40 ? 'badge-yellow' : 'badge-gray'}`}>{match.match_pct}% match</span>
+                        : <span className="badge badge-gray">Not ranked</span>}
+                    </div>
+                    <p className="issue-desc">{issue.body ? `${issue.body.slice(0, 220)}${issue.body.length > 220 ? '...' : ''}` : 'No description provided. Open the issue to explore contribution guidance.'}</p>
+                    <div className="issue-tags">{issue.labels.map(item => <span className={`badge ${item.name.toLowerCase() === 'good first issue' ? 'badge-green' : 'badge-blue'}`} key={item.name}>{item.name}</span>)}</div>
+                    {match && match.reasons.length > 0 && (
+                      <ul className="issue-reasons">{match.reasons.map((r, i) => <li key={i}>{r}</li>)}</ul>
+                    )}
+                    {!match && <div className="issue-reasons"><p className="muted">View issue details and your contribution checklist<WorkflowIcon name="arrow" /></p></div>}
+                  </div>
+                  <span className="issue-arr"><WorkflowIcon name="arrow" /></span>
+                </Link>
+              )
+            })}
+            {filtered.length === 0 && <div className="card issue-empty"><h2 className="ctitle">{issues.length === 0 ? 'No open issues in this analysis' : 'No issues match your filters'}</h2><p className="muted">{issues.length === 0 ? 'Try another repository, or check GitHub for newer issues.' : 'Try a different search or select All labels.'}</p>{(query || label) && <button className="btn btn-s mt12" onClick={() => { setQuery(''); setLabel('') }}>Clear filters</button>}</div>}
           </>
         )}
       </div>

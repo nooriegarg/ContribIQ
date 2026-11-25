@@ -16,7 +16,7 @@ from litellm import acompletion
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.core.config import get_settings
+from backend.core.config import get_settings, ai_kwargs
 from backend.models.issue import Issue
 from backend.services.github_client import GitHubClient
 
@@ -63,8 +63,7 @@ _CHECKLIST = [
 async def _llm(prompt: str) -> str:
     settings = get_settings()
     response = await acompletion(
-        model="ollama/qwen2.5-coder:7b",
-        api_base=settings.OLLAMA_URL,
+        **ai_kwargs(settings),
         messages=[{"role": "user", "content": prompt}],
         temperature=0.2,
     )

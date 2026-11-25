@@ -5,7 +5,7 @@ from typing import Any
 
 from litellm import acompletion
 
-from backend.core.config import get_settings
+from backend.core.config import get_settings, ai_kwargs
 
 logger = logging.getLogger(__name__)
 
@@ -85,8 +85,7 @@ async def generate_onboarding_plan(analysis_result: dict[str, Any]) -> dict[str,
     )
 
     response = await acompletion(
-        model="ollama/qwen2.5-coder:7b",
-        api_base=settings.OLLAMA_URL,
+        **ai_kwargs(settings),
         messages=[{"role": "user", "content": prompt}],
         temperature=0.2,
     )

@@ -9,6 +9,9 @@ import WorkflowIcon from '../components/WorkflowIcon'
 import { getOpenIssues } from '../utils/issues'
 import TimelineSkeleton from '../components/TimelineSkeleton'
 
+// Bump this when the plan format or AI model changes to bust old cached plans
+const PLAN_CACHE_VERSION = 'v2'
+
 export default function OnboardingPage() {
   const { taskId, basePath, result } = useWorkflow()
   const [plan, setPlan] = useState<OnboardingPlan | null>(null)
@@ -17,7 +20,7 @@ export default function OnboardingPage() {
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
-    const cacheKey = `onboarding-plan-${taskId}`
+    const cacheKey = `onboarding-plan-${PLAN_CACHE_VERSION}-${taskId}`
     const cached = sessionStorage.getItem(cacheKey)
     if (cached && attempt === 0) {
       setPlan(JSON.parse(cached))
@@ -64,6 +67,7 @@ export default function OnboardingPage() {
                   <p className="muted mt12">AI-generated estimate. Actual setup time depends on the project and your environment.</p>
                 </section>
                 <section className="card tip-card mt16"><h3 className="ctitle">A good first contribution starts small</h3><p>Read CONTRIBUTING.md, check the project&apos;s setup instructions, and confirm the issue is still open before making changes.</p></section>
+                <button className="btn btn-s mt16" onClick={() => setAttempt(a => a + 1)}>Regenerate plan</button>
               </aside>
             </div>}
       </div>
