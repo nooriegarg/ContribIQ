@@ -252,5 +252,8 @@ Thumbs.db
 # Playwright
 .playwright-mcp/
 
+# Local dev artefacts
+mock-ui/
+
 # Project docs (local reference only)
 docs/COMMIT_PLAN.md
