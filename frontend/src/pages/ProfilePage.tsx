@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import { getProfile, updateProfile, type ContributorProfile } from '../api/profile'
 import ChipSelector from '../components/ChipSelector'
 import ExperienceSelector from '../components/ExperienceSelector'
@@ -147,7 +147,7 @@ export default function ProfilePage() {
       </div>
       <footer className="action-row">
         <p className="ar-hint">Your skills and interests are saved to your contributor profile.</p>
-        <Link className="btn btn-s" to={`${basePath}/onboarding`}>Back</Link>
+        <button className="btn btn-s" onClick={() => navigate(-1)} type="button">← Back</button>
         <button className="btn btn-p" disabled={loading || saving || !profile} onClick={() => void handleContinue()} type="button">
           {saving ? 'Saving…' : 'Find My Issues'}<WorkflowIcon name="arrow" />
         </button>

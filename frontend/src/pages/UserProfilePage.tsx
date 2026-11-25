@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Link, Navigate } from 'react-router-dom'
+import { Link, Navigate, useNavigate } from 'react-router-dom'
 import { updateCurrentUser } from '../api/auth'
 import { getProfile, updateProfile, type ContributorProfile } from '../api/profile'
 import Avatar from '../components/Avatar'
@@ -9,7 +9,6 @@ import WorkflowIcon from '../components/WorkflowIcon'
 import { getAvatarUrl } from '../components/WorkflowLayout'
 import { useAuth } from '../context/useAuth'
 import { INTEREST_OPTIONS, LANGUAGE_OPTIONS } from '../data/profileOptions'
-import { getRepoHistory } from '../hooks/useAnalysis'
 import '../styles/background.css'
 import '../styles/components.css'
 import '../styles/globals.css'
@@ -17,6 +16,7 @@ import '../styles/user-profile.css'
 
 export default function UserProfilePage() {
   const { token, user, logout, updateUser } = useAuth()
+  const navigate = useNavigate()
   const [profile, setProfile] = useState<ContributorProfile | null>(null)
   const [languagesSelected, setLanguagesSelected] = useState<string[]>([])
   const [interestsSelected, setInterestsSelected] = useState<string[]>([])
@@ -30,12 +30,6 @@ export default function UserProfilePage() {
   const [attempt, setAttempt] = useState(0)
   const [avatarUrl, setAvatarUrl] = useState<string | null>(() => user ? getAvatarUrl(user.id) : null)
   const fileInputRef = useRef<HTMLInputElement>(null)
-
-  const history = getRepoHistory(user?.id)
-  const backTo = history.length > 0
-    ? `/overview/${encodeURIComponent(history[0].taskId)}`
-    : '/dashboard'
-  const backLabel = history.length > 0 ? history[0].fullName : 'Dashboard'
 
   useEffect(() => {
     let active = true
@@ -207,7 +201,7 @@ export default function UserProfilePage() {
             {saved && <p className="notice success" role="status">Profile saved.</p>}
 
             <div className="up-actions">
-              <Link className="btn btn-s" to={backTo}>← {backLabel}</Link>
+              <button className="btn btn-s" onClick={() => navigate(-1)} type="button">← Back</button>
               <button
                 className="btn btn-p"
                 disabled={saving || (!profile && !loading)}
