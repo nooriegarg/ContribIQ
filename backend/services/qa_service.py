@@ -142,11 +142,18 @@ async def ask(
     repo_id: str,
     question: str,
 ) -> dict[str, Any]:
+    import logging as _logging
+    _log = _logging.getLogger(__name__)
     settings = get_settings()
     repo_uuid = uuid.UUID(repo_id)
 
     question_vector = _embed([question])[0]
-    chunks = await _retrieve_chunks(db, repo_uuid, question_vector)
+    try:
+        chunks = await _retrieve_chunks(db, repo_uuid, question_vector)
+    except Exception as exc:
+        _log.exception("_retrieve_chunks failed for repo %s: %s", repo_id, exc)
+        chunks = []
+    _log.info("_retrieve_chunks returned %d chunks for repo %s", len(chunks), repo_id)
 
     if not chunks:
         return {
