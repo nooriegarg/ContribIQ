@@ -131,8 +131,8 @@ test: add unit tests for health scorer
 ### Checks to run before opening a PR
 
 ```bash
-# Backend tests (pytest is not in requirements.txt, so install it once)
-pip install pytest
+# Backend tests (from the repository root, in the virtual environment)
+python -m pip install -r requirements-dev.txt
 python -m pytest backend/tests -q
 
 # Frontend lint and type-check/build (the same steps CI runs in frontend-lint.yml)

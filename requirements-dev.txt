@@ -1,0 +1,5 @@
+# Backend development and test dependencies; not used for production installs.
+-r requirements.txt
+pytest
+pytest-asyncio
+pytest-cov
