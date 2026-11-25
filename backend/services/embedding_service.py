@@ -8,10 +8,9 @@ import uuid
 from typing import Any
 
 from fastembed import TextEmbedding
-from sqlalchemy.dialects.postgresql import insert
+from sqlalchemy import text
 
 from backend.db.session import AsyncSessionLocal
-from backend.models.code_chunk import CodeChunk
 
 _MODEL_NAME = "BAAI/bge-small-en-v1.5"
 _DIMS = 384
@@ -43,25 +42,30 @@ async def embed_files(
 
     vectors = _embed(contents)
 
-    rows = [
-        {
-            "id": uuid.uuid4(),
-            "repo_id": repo_id,
-            "file_path": path,
-            "chunk_index": 0,
-            "content": content,
-            "embedding": vector,
-        }
-        for path, content, vector in zip(paths, contents, vectors)
-    ]
-
     async with AsyncSessionLocal() as session:
-        stmt = (
-            insert(CodeChunk)
-            .values(rows)
-            .on_conflict_do_nothing()
+        # Register vector codec on the raw asyncpg connection before inserting
+        raw_conn = await session.connection()
+        await raw_conn.run_sync(
+            lambda sync_conn: sync_conn.connection.run_async(
+                __import__('pgvector.asyncpg', fromlist=['register_vector']).register_vector
+            )
         )
-        await session.execute(stmt)
+        for path, content, vector in zip(paths, contents, vectors):
+            await session.execute(
+                text(
+                    "INSERT INTO code_chunks (id, repo_id, file_path, chunk_index, content, embedding) "
+                    "VALUES (:id, :repo_id, :file_path, :chunk_index, :content, :embedding) "
+                    "ON CONFLICT DO NOTHING"
+                ),
+                {
+                    "id": str(uuid.uuid4()),
+                    "repo_id": str(repo_id),
+                    "file_path": path,
+                    "chunk_index": 0,
+                    "content": content,
+                    "embedding": vector,
+                },
+            )
         await session.commit()
 
-    return {"repo_id": str(repo_id), "chunks_stored": len(rows)}
+    return {"repo_id": str(repo_id), "chunks_stored": len(paths)}
