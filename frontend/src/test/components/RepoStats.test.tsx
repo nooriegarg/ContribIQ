@@ -45,9 +45,9 @@ describe('RepoStats — Test Coverage tile', () => {
     expect(screen.getByText('100%')).toBeInTheDocument()
   })
 
-  it('shows label "Test Coverage"', () => {
+  it('shows label "Test Coverage (est.)"', () => {
     renderStats({ testCoveragePct: 84 })
-    expect(screen.getByText('Test Coverage')).toBeInTheDocument()
+    expect(screen.getByText('Test Coverage (est.)')).toBeInTheDocument()
   })
 })
 
