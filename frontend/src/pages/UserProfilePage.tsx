@@ -21,21 +21,15 @@ export default function UserProfilePage() {
   const [languagesSelected, setLanguagesSelected] = useState<string[]>([])
   const [interestsSelected, setInterestsSelected] = useState<string[]>([])
   const [experience, setExperience] = useState<ContributorProfile['experience']>('beginner')
+  const [nameValue, setNameValue] = useState(user?.name ?? '')
+  const [emailValue, setEmailValue] = useState(user?.email ?? '')
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   const [saved, setSaved] = useState(false)
   const [attempt, setAttempt] = useState(0)
   const [avatarUrl, setAvatarUrl] = useState<string | null>(() => user ? getAvatarUrl(user.id) : null)
-  const updateQueue = useRef<Promise<void>>(Promise.resolve())
   const fileInputRef = useRef<HTMLInputElement>(null)
-
-  // Name / email fields
-  const [nameValue, setNameValue] = useState(user?.name ?? '')
-  const [emailValue, setEmailValue] = useState(user?.email ?? '')
-  const [accountSaving, setAccountSaving] = useState(false)
-  const [accountError, setAccountError] = useState('')
-  const [accountSaved, setAccountSaved] = useState(false)
 
   const history = getRepoHistory()
   const backTo = history.length > 0
@@ -69,46 +63,10 @@ export default function UserProfilePage() {
     reader.onload = () => {
       const dataUrl = reader.result as string
       localStorage.setItem(`avatar-${user.id}`, dataUrl)
-      // Notify other tabs/components
       window.dispatchEvent(new StorageEvent('storage', { key: `avatar-${user.id}`, newValue: dataUrl }))
       setAvatarUrl(dataUrl)
     }
     reader.readAsDataURL(file)
-  }
-
-  async function toggleSelection(
-    value: string,
-    current: string[],
-    setCurrent: (next: string[]) => void,
-    field: 'languages' | 'interests',
-  ) {
-    const next = current.includes(value) ? current.filter(x => x !== value) : [...current, value]
-    setCurrent(next)
-    setError('')
-    setSaved(false)
-    const request = updateQueue.current.then(async () => {
-      const updated = await updateProfile({ [field]: next })
-      setProfile(updated)
-    })
-    updateQueue.current = request.then(() => undefined, () => undefined)
-    try { await request } catch (reason) {
-      setError(reason instanceof Error ? reason.message : 'Unable to save.')
-    }
-  }
-
-  async function handleAccountSave() {
-    setAccountSaving(true)
-    setAccountError('')
-    setAccountSaved(false)
-    try {
-      const updated = await updateCurrentUser({ name: nameValue.trim() || undefined, email: emailValue.trim() || undefined })
-      updateUser(updated)
-      setAccountSaved(true)
-    } catch (reason) {
-      setAccountError(reason instanceof Error ? reason.message : 'Unable to update account details.')
-    } finally {
-      setAccountSaving(false)
-    }
   }
 
   async function handleSave() {
@@ -116,8 +74,11 @@ export default function UserProfilePage() {
     setError('')
     setSaved(false)
     try {
-      await updateQueue.current
-      await updateProfile({ languages: languagesSelected, interests: interestsSelected, experience })
+      const [accountResult] = await Promise.all([
+        updateCurrentUser({ name: nameValue.trim() || undefined, email: emailValue.trim() || undefined }),
+        updateProfile({ languages: languagesSelected, interests: interestsSelected, experience }),
+      ])
+      updateUser(accountResult)
       setSaved(true)
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : 'Unable to save your profile.')
@@ -142,7 +103,6 @@ export default function UserProfilePage() {
       <main className="up-main">
         <div className="up-card">
           <div className="up-card-header">
-            {/* Avatar section */}
             <div className="up-avatar-row">
               <div className="up-avatar-wrap">
                 <Avatar name={user?.name ?? ''} avatarUrl={avatarUrl} size={72} />
@@ -180,93 +140,83 @@ export default function UserProfilePage() {
             </div>
           )}
 
-          {/* Account details section — always visible */}
-          <section className="up-section">
-            <h2 className="up-section-title">Account details</h2>
-            <div className="up-account-fields">
-              <label className="up-field-label">
-                Full name
-                <input
-                  className="up-field-input"
-                  type="text"
-                  value={nameValue}
-                  onChange={e => { setNameValue(e.target.value); setAccountSaved(false) }}
-                  placeholder="Your name"
-                  autoComplete="name"
-                />
-              </label>
-              <label className="up-field-label">
-                Email address
-                <input
-                  className="up-field-input"
-                  type="email"
-                  value={emailValue}
-                  onChange={e => { setEmailValue(e.target.value); setAccountSaved(false) }}
-                  placeholder="you@example.com"
-                  autoComplete="email"
-                />
-              </label>
-            </div>
-            {accountError && <p className="notice error mt12" role="alert">{accountError}</p>}
-            {accountSaved && <p className="notice success mt12" role="status">Account details updated.</p>}
-            <div className="up-account-actions">
+          <fieldset className="up-fields" disabled={saving}>
+            <section className="up-section">
+              <h2 className="up-section-title">Account details</h2>
+              <div className="up-account-fields">
+                <label className="up-field-label">
+                  Full name
+                  <input
+                    className="up-field-input"
+                    type="text"
+                    value={nameValue}
+                    onChange={e => { setNameValue(e.target.value); setSaved(false) }}
+                    placeholder="Your name"
+                    autoComplete="name"
+                  />
+                </label>
+                <label className="up-field-label">
+                  Email address
+                  <input
+                    className="up-field-input"
+                    type="email"
+                    value={emailValue}
+                    onChange={e => { setEmailValue(e.target.value); setSaved(false) }}
+                    placeholder="you@example.com"
+                    autoComplete="email"
+                  />
+                </label>
+              </div>
+            </section>
+
+            <hr className="up-divider" />
+
+            {loading ? (
+              <p className="up-loading" role="status">Loading profile…</p>
+            ) : profile && (
+              <>
+                <section className="up-section">
+                  <h2 className="up-section-title">Which languages are you comfortable with?</h2>
+                  <ChipSelector
+                    label="Programming languages"
+                    options={LANGUAGE_OPTIONS}
+                    selected={languagesSelected}
+                    onChange={v => { setLanguagesSelected(s => s.includes(v) ? s.filter(x => x !== v) : [...s, v]); setSaved(false) }}
+                    allowCustom
+                  />
+                </section>
+
+                <section className="up-section">
+                  <h2 className="up-section-title">What's your open-source contribution experience?</h2>
+                  <ExperienceSelector value={experience} onChange={v => { setExperience(v); setSaved(false) }} />
+                </section>
+
+                <section className="up-section">
+                  <h2 className="up-section-title">What are you interested in working on?</h2>
+                  <ChipSelector
+                    label="Areas of interest"
+                    options={INTEREST_OPTIONS}
+                    selected={interestsSelected}
+                    onChange={v => { setInterestsSelected(s => s.includes(v) ? s.filter(x => x !== v) : [...s, v]); setSaved(false) }}
+                    allowCustom
+                  />
+                </section>
+              </>
+            )}
+
+            {saved && <p className="notice success" role="status">Profile saved.</p>}
+
+            <div className="up-actions">
+              <Link className="btn btn-s" to={backTo}>← {backLabel}</Link>
               <button
                 className="btn btn-p"
-                disabled={accountSaving}
-                onClick={() => void handleAccountSave()}
+                disabled={saving || (!profile && !loading)}
+                onClick={() => void handleSave()}
               >
-                {accountSaving ? 'Saving…' : 'Update account'}
+                {saving ? 'Saving…' : 'Save changes'}
               </button>
             </div>
-          </section>
-
-          <hr className="up-divider" />
-
-          {loading ? (
-            <p className="up-loading" role="status">Loading profile…</p>
-          ) : profile && (
-            <fieldset className="up-fields" disabled={saving}>
-              <section className="up-section">
-                <h2 className="up-section-title">Which languages are you comfortable with?</h2>
-                <ChipSelector
-                  label="Programming languages"
-                  options={LANGUAGE_OPTIONS}
-                  selected={languagesSelected}
-                  onChange={v => void toggleSelection(v, languagesSelected, setLanguagesSelected, 'languages')}
-                  allowCustom
-                />
-              </section>
-
-              <section className="up-section">
-                <h2 className="up-section-title">What's your open-source contribution experience?</h2>
-                <ExperienceSelector value={experience} onChange={setExperience} />
-              </section>
-
-              <section className="up-section">
-                <h2 className="up-section-title">What are you interested in working on?</h2>
-                <ChipSelector
-                  label="Areas of interest"
-                  options={INTEREST_OPTIONS}
-                  selected={interestsSelected}
-                  onChange={v => void toggleSelection(v, interestsSelected, setInterestsSelected, 'interests')}
-                  allowCustom
-                />
-              </section>
-
-              {saved && <p className="notice success" role="status">Profile saved.</p>}
-
-              <div className="up-actions">
-                <Link className="btn btn-s" to={backTo}>← {backLabel}</Link>
-                <button
-                  className="btn btn-p"
-                  disabled={saving || !profile}
-                  onClick={() => void handleSave()}
-                >
-                  {saving ? 'Saving…' : 'Save changes'}
-                </button>
-              </div>
-            </fieldset>
-          )}
+          </fieldset>
         </div>
       </main>
     </div>

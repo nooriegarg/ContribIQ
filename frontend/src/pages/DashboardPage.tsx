@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useAnalysis } from '../hooks/useAnalysis'
+import { useAnalysis, getRepoHistory, type RepoHistoryEntry } from '../hooks/useAnalysis'
 import { parseGitHubRepository } from '../utils/validation'
 import WorkflowIcon from '../components/WorkflowIcon'
 
@@ -9,6 +9,7 @@ export default function DashboardPage() {
   const analysis = useAnalysis()
   const [repository, setRepository] = useState('')
   const [inputError, setInputError] = useState('')
+  const [existingEntry, setExistingEntry] = useState<RepoHistoryEntry | null>(null)
   const busy = ['starting', 'running', 'done'].includes(analysis.status)
 
   useEffect(() => {
@@ -26,7 +27,20 @@ export default function DashboardPage() {
       return
     }
     setInputError('')
+    const fullName = `${parsed.owner}/${parsed.repo}`
+    const history = getRepoHistory()
+    const found = history.find(e => e.fullName.toLowerCase() === fullName.toLowerCase())
+    if (found) {
+      setExistingEntry(found)
+      return
+    }
     await analysis.run(parsed.owner, parsed.repo)
+  }
+
+  async function handleAnalyzeAnyway() {
+    setExistingEntry(null)
+    const parsed = parseGitHubRepository(repository)
+    if (parsed) await analysis.run(parsed.owner, parsed.repo)
   }
 
   return (
@@ -75,6 +89,25 @@ export default function DashboardPage() {
             </div>
             <p className="ld-hint">This can take up to two minutes. Keep the background worker running.</p>
             <button className="btn btn-s mt16" onClick={analysis.reset} type="button">Stop waiting</button>
+          </div>
+        </div>
+      )}
+      {existingEntry && (
+        <div className="switch-block-overlay" role="dialog" aria-modal="true" aria-labelledby="existing-repo-title" onClick={() => setExistingEntry(null)}>
+          <div className="switch-block-modal" onClick={e => e.stopPropagation()}>
+            <div className="switch-block-icon" aria-hidden="true">📂</div>
+            <h2 className="switch-block-title" id="existing-repo-title">Analysis already exists</h2>
+            <p className="switch-block-desc">
+              <strong>{existingEntry.fullName}</strong> was analyzed on {new Date(existingEntry.analyzedAt).toLocaleDateString()}. Would you like to view that analysis or run a fresh one?
+            </p>
+            <div style={{ display: 'flex', gap: 10, justifyContent: 'center', flexWrap: 'wrap' }}>
+              <button className="btn btn-p" onClick={() => navigate(`/overview/${encodeURIComponent(existingEntry.taskId)}`)} autoFocus>
+                Switch to repo
+              </button>
+              <button className="btn btn-s" onClick={handleAnalyzeAnyway}>
+                Analyze again
+              </button>
+            </div>
           </div>
         </div>
       )}

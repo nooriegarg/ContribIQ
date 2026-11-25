@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
-import { getRepoHistory } from '../../hooks/useAnalysis'
+import { getRepoHistory, removeFromHistory } from '../../hooks/useAnalysis'
 
 const HISTORY_KEY = 'contribiq_repo_history'
 
@@ -119,5 +119,51 @@ describe('saveToHistory (via localStorage round-trip)', () => {
     const entry = getRepoHistory()[0]
     expect(() => new Date(entry.analyzedAt)).not.toThrow()
     expect(isNaN(new Date(entry.analyzedAt).getTime())).toBe(false)
+  })
+})
+
+describe('removeFromHistory', () => {
+  beforeEach(() => {
+    resetHistory()
+  })
+
+  it('removes the matching entry and returns the updated list', () => {
+    seedHistory([makeEntry('t1', 'o/r1'), makeEntry('t2', 'o/r2'), makeEntry('t3', 'o/r3')])
+    const result = removeFromHistory('t2')
+    expect(result).toHaveLength(2)
+    expect(result.map(e => e.taskId)).toEqual(['t1', 't3'])
+  })
+
+  it('persists the filtered list to localStorage', () => {
+    seedHistory([makeEntry('t1', 'o/r1'), makeEntry('t2', 'o/r2')])
+    removeFromHistory('t1')
+    expect(getRepoHistory()).toHaveLength(1)
+    expect(getRepoHistory()[0].taskId).toBe('t2')
+  })
+
+  it('returns empty array when removing the only entry', () => {
+    seedHistory([makeEntry('solo', 'o/r')])
+    const result = removeFromHistory('solo')
+    expect(result).toEqual([])
+    expect(getRepoHistory()).toEqual([])
+  })
+
+  it('returns unchanged list when taskId is not found', () => {
+    const entries = [makeEntry('t1', 'o/r1'), makeEntry('t2', 'o/r2')]
+    seedHistory(entries)
+    const result = removeFromHistory('nonexistent')
+    expect(result).toHaveLength(2)
+    expect(result.map(e => e.taskId)).toEqual(['t1', 't2'])
+  })
+
+  it('returns empty array when history is empty', () => {
+    const result = removeFromHistory('anything')
+    expect(result).toEqual([])
+  })
+
+  it('preserves entry order after removal', () => {
+    seedHistory([makeEntry('a'), makeEntry('b'), makeEntry('c'), makeEntry('d')])
+    const result = removeFromHistory('b')
+    expect(result.map(e => e.taskId)).toEqual(['a', 'c', 'd'])
   })
 })

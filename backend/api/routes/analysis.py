@@ -21,7 +21,7 @@ from backend.services.valkey_client import get_key
 from backend.worker.broker import broker
 from backend.worker.tasks.analyze import analyze_repository
 from backend.worker.tasks.generate_diagram import generate_diagram
-from backend.services.valkey_client import get_key, set_key
+from backend.services.valkey_client import get_key, set_key, delete_key
 
 logger = logging.getLogger(__name__)
 
@@ -151,7 +151,13 @@ async def start_diagram(
     cache_key = f"diagram:{task_id}"
     cached = await get_key(cache_key)
     if cached:
-        return {"diagram_task_id": cached}
+        try:
+            prior = await _get_task_result(cached)
+            if prior is not None and not prior.is_err:
+                return {"diagram_task_id": cached}
+        except Exception:
+            pass
+        await delete_key(cache_key)
 
     settings = get_settings()
     github_token = await get_key(f"gh-token:{current_user.id}") or settings.GITHUB_TOKEN

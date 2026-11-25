@@ -53,8 +53,17 @@ class GitHubClient:
             raise GitHubRateLimitError(response)
         response.raise_for_status()
 
+    async def _get_with_retry(self, url: str, **kwargs) -> httpx.Response:
+        for attempt in range(3):
+            try:
+                return await self._http.get(url, **kwargs)
+            except httpx.RemoteProtocolError:
+                if attempt == 2:
+                    raise
+        raise RuntimeError("unreachable")
+
     async def get_repo(self, owner: str, name: str) -> dict[str, Any]:
-        response = await self._http.get(
+        response = await self._get_with_retry(
             f"https://api.github.com/repos/{owner}/{name}",
             headers=self._auth_headers(),
         )
@@ -62,7 +71,7 @@ class GitHubClient:
         return response.json()
 
     async def get_file_tree(self, owner: str, name: str, sha: str) -> list[dict[str, Any]]:
-        response = await self._http.get(
+        response = await self._get_with_retry(
             f"https://api.github.com/repos/{owner}/{name}/git/trees/{sha}",
             params={"recursive": "1"},
             headers=self._auth_headers(),

@@ -149,6 +149,11 @@
 .contrib-shell .sb-switcher-item.sb-switcher-new { color: var(--b5); font-weight: 600; border-top: 1px solid rgba(255,255,255,.08); text-decoration: none; }
 .contrib-shell .sb-switcher-item.sb-switcher-new:hover { color: white; background: rgba(255,255,255,.07); }
 .contrib-shell .sb-switcher-badge { font-size: 10px; padding: 2px 6px; border-radius: 4px; background: rgba(99,139,255,.2); color: var(--b6); white-space: nowrap; flex-shrink: 0; }
+.contrib-shell .sb-switcher-item-row { display: flex; align-items: stretch; }
+.contrib-shell .sb-switcher-item-row .sb-switcher-item { flex: 1; min-width: 0; }
+.contrib-shell .sb-switcher-delete { flex-shrink: 0; display: flex; align-items: center; justify-content: center; width: 28px; background: transparent; border: 0; color: var(--b6); font-size: 16px; line-height: 1; cursor: pointer; opacity: 0; transition: opacity .15s, color .15s; padding: 0 4px; }
+.contrib-shell .sb-switcher-item-row:hover .sb-switcher-delete { opacity: 1; }
+.contrib-shell .sb-switcher-delete:hover { color: #fc8181; }
 /* Switch-blocked popup */
 .switch-block-overlay { position: fixed; inset: 0; z-index: 300; background: rgba(0,10,40,.6); backdrop-filter: blur(3px); display: flex; align-items: center; justify-content: center; padding: 24px; }
 .switch-block-modal { background: white; border-radius: 16px; padding: 36px 32px 28px; max-width: 380px; width: 100%; text-align: center; box-shadow: 0 24px 60px rgba(0,0,0,.3); animation: sbm-in .18s ease; }

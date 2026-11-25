@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link, Navigate, Outlet, useLocation, useMatch, useNavigate, useParams } from 'react-router-dom'
 import { getAnalysisResult, type AnalysisResult } from '../api/analyze'
 import { useAuth } from '../context/useAuth'
-import { getRepoHistory, type RepoHistoryEntry } from '../hooks/useAnalysis'
+import { getRepoHistory, removeFromHistory, type RepoHistoryEntry } from '../hooks/useAnalysis'
 import Avatar from './Avatar'
 import WorkflowIcon from './WorkflowIcon'
 import { getOpenIssues } from '../utils/issues'
@@ -62,6 +62,7 @@ export default function WorkflowLayout({ hero = false }: { hero?: boolean }) {
   const [history, setHistory] = useState<RepoHistoryEntry[]>([])
   const [switcherOpen, setSwitcherOpen] = useState(false)
   const [switchBlocked, setSwitchBlocked] = useState(false)
+  const [deleteConfirmTaskId, setDeleteConfirmTaskId] = useState<string | null>(null)
   const [analysisReady, setAnalysisReady] = useState(() => !hero && isAnalysisReady(taskId))
   const [avatarUrl, setAvatarUrl] = useState(() => user ? getAvatarUrl(user.id) : null)
   const basePath = `/overview/${encodeURIComponent(taskId)}`
@@ -127,6 +128,15 @@ export default function WorkflowLayout({ hero = false }: { hero?: boolean }) {
       e.preventDefault()
       setSwitcherOpen(false)
       setSwitchBlocked(true)
+    }
+  }
+
+  function handleConfirmDelete(taskId: string) {
+    const updated = removeFromHistory(taskId)
+    setHistory(updated)
+    setDeleteConfirmTaskId(null)
+    if (taskId === decodeURIComponent(window.location.pathname.split('/')[2] ?? '')) {
+      navigate('/dashboard')
     }
   }
 
@@ -220,14 +230,24 @@ export default function WorkflowLayout({ hero = false }: { hero?: boolean }) {
                     <ul className="sb-switcher-menu" role="listbox" aria-label="Previously analyzed repositories">
                       {history.map(entry => (
                         <li key={entry.taskId} role="option" aria-selected={entry.taskId === taskId}>
-                          <button
-                            className={`sb-switcher-item${entry.taskId === taskId ? ' current' : ''}`}
-                            onClick={() => handleSwitchAttempt(entry)}
-                            disabled={entry.taskId === taskId}
-                          >
-                            {entry.fullName}
-                            {entry.taskId === taskId && <span className="sb-switcher-badge">current</span>}
-                          </button>
+                          <div className="sb-switcher-item-row">
+                            <button
+                              className={`sb-switcher-item${entry.taskId === taskId ? ' current' : ''}`}
+                              onClick={() => handleSwitchAttempt(entry)}
+                              disabled={entry.taskId === taskId}
+                            >
+                              {entry.fullName}
+                              {entry.taskId === taskId && <span className="sb-switcher-badge">current</span>}
+                            </button>
+                            <button
+                              className="sb-switcher-delete"
+                              aria-label={`Delete ${entry.fullName}`}
+                              title="Remove from history"
+                              onClick={e => { e.stopPropagation(); setSwitcherOpen(false); setDeleteConfirmTaskId(entry.taskId) }}
+                            >
+                              ×
+                            </button>
+                          </div>
                         </li>
                       ))}
                       <li role="option" aria-selected={false}>
@@ -265,6 +285,28 @@ export default function WorkflowLayout({ hero = false }: { hero?: boolean }) {
           </div>
         </div>
       )}
+      {deleteConfirmTaskId && (() => {
+        const entry = history.find(e => e.taskId === deleteConfirmTaskId)
+        return (
+          <div className="switch-block-overlay" role="dialog" aria-modal="true" aria-labelledby="delete-confirm-title" onClick={() => setDeleteConfirmTaskId(null)}>
+            <div className="switch-block-modal" onClick={e => e.stopPropagation()}>
+              <div className="switch-block-icon" aria-hidden="true">🗑️</div>
+              <h2 className="switch-block-title" id="delete-confirm-title">Remove from history?</h2>
+              <p className="switch-block-desc">
+                <strong>{entry?.fullName}</strong> will be removed from your repository history. The analysis data is not deleted.
+              </p>
+              <div style={{ display: 'flex', gap: 10, justifyContent: 'center', flexWrap: 'wrap' }}>
+                <button className="btn btn-p" style={{ background: '#e53e3e' }} onClick={() => handleConfirmDelete(deleteConfirmTaskId)} autoFocus>
+                  Remove
+                </button>
+                <button className="btn btn-s" onClick={() => setDeleteConfirmTaskId(null)}>
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        )
+      })()}
     </div>
   )
 }

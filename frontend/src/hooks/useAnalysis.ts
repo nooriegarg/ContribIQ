@@ -40,6 +40,12 @@ export function getRepoHistory(): RepoHistoryEntry[] {
   }
 }
 
+export function removeFromHistory(taskId: string): RepoHistoryEntry[] {
+  const updated = getRepoHistory().filter(e => e.taskId !== taskId)
+  localStorage.setItem(HISTORY_KEY, JSON.stringify(updated))
+  return updated
+}
+
 function saveToHistory(taskId: string, result: AnalysisResult) {
   const fullName = result.metadata.full_name || `${result.owner}/${result.repo}`
   const entry: RepoHistoryEntry = { taskId, fullName, analyzedAt: new Date().toISOString() }
