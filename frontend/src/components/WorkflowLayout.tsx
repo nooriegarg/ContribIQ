@@ -91,7 +91,7 @@ export default function WorkflowLayout({ hero = false }: { hero?: boolean }) {
 
   useEffect(() => {
     if (!hero) {
-      setHistory(getRepoHistory())
+      setHistory(getRepoHistory(user?.id))
       setAnalysisReady(isAnalysisReady(taskId))
     }
   }, [hero, taskId])
@@ -132,7 +132,7 @@ export default function WorkflowLayout({ hero = false }: { hero?: boolean }) {
   }
 
   function handleConfirmDelete(taskId: string) {
-    const updated = removeFromHistory(taskId)
+    const updated = removeFromHistory(taskId, user?.id)
     setHistory(updated)
     setDeleteConfirmTaskId(null)
     if (taskId === decodeURIComponent(window.location.pathname.split('/')[2] ?? '')) {

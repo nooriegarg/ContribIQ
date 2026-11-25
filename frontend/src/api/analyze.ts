@@ -21,6 +21,8 @@ export interface AnalysisResult {
   }
   tech_stack: string[]
   directory_map: { directory: string; description: string }[]
+  test_file_count?: number
+  test_coverage_pct?: number
   issues?: RepositoryIssue[]
   steps?: ProgressEvent[]
 }

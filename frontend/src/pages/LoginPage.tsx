@@ -6,6 +6,7 @@ import LoginForm from '../components/LoginForm'
 import SignupForm from '../components/SignupForm'
 import SuccessState from '../components/SuccessState'
 import TrustBar from '../components/TrustBar'
+import { getRepoHistory } from '../hooks/useAnalysis'
 import '../styles/background.css'
 import '../styles/login.css'
 
@@ -15,10 +16,20 @@ export default function LoginPage() {
   const [view, setView]         = useState<View>('login')
   const [succeeded, setSucceeded] = useState(false)
   const [isSignup, setIsSignup] = useState(false)
+  const [loggedInUserId, setLoggedInUserId] = useState<string | undefined>()
   const navigate = useNavigate()
 
-  function handleRedirect() {
-    navigate(isSignup ? '/onboarding-setup' : '/dashboard')
+  function handleRedirect(userId?: string) {
+    if (isSignup) {
+      navigate('/onboarding-setup')
+      return
+    }
+    const history = getRepoHistory(userId ?? loggedInUserId)
+    if (history.length > 0) {
+      navigate(`/overview/${encodeURIComponent(history[0].taskId)}`)
+    } else {
+      navigate('/dashboard')
+    }
   }
 
   return (
@@ -30,7 +41,7 @@ export default function LoginPage() {
           {succeeded ? (
             <SuccessState onRedirectDone={handleRedirect} />
           ) : view === 'login' ? (
-            <LoginForm onSuccess={() => { setIsSignup(false); setSucceeded(true) }} />
+            <LoginForm onSuccess={(userId) => { setLoggedInUserId(userId); setIsSignup(false); setSucceeded(true) }} />
           ) : (
             <SignupForm onSuccess={() => { setIsSignup(true); setSucceeded(true) }} />
           )}

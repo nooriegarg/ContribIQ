@@ -31,7 +31,7 @@ export default function UserProfilePage() {
   const [avatarUrl, setAvatarUrl] = useState<string | null>(() => user ? getAvatarUrl(user.id) : null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
-  const history = getRepoHistory()
+  const history = getRepoHistory(user?.id)
   const backTo = history.length > 0
     ? `/overview/${encodeURIComponent(history[0].taskId)}`
     : '/dashboard'

@@ -6,7 +6,7 @@ import { useAuth } from '../context/useAuth'
 import { validateEmail } from '../utils/validation'
 
 interface Props {
-  onSuccess: () => void
+  onSuccess: (userId: string) => void
 }
 
 type AlertState = { message: string; variant: 'error' | 'info' | 'success' } | null
@@ -54,7 +54,7 @@ export default function LoginForm({ onSuccess }: Props) {
     try {
       const data = await loginWithEmail({ email: email.trim(), password, rememberMe })
       login(data.token, data.refreshToken, data.user, rememberMe)
-      onSuccess()
+      onSuccess(data.user.id)
     } catch (err) {
       setAlert({ message: (err as Error).message || 'Invalid email or password.', variant: 'error' })
     } finally {

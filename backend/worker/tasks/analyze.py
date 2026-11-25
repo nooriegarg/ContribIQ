@@ -1,5 +1,9 @@
 import logging
 import uuid
+import asyncio
+import json
+import os
+import sys
 from typing import Any
 
 from sqlalchemy.dialects.postgresql import insert
@@ -13,6 +17,27 @@ from backend.services.tech_stack_service import detect_tech_stack, map_directori
 from backend.worker.broker import broker
 
 logger = logging.getLogger(__name__)
+
+async def _run_pytest_cov() -> int | None:
+    """Run pytest-cov on the local backend and return total line coverage %, or None on failure."""
+    project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
+    cov_json = os.path.join(project_root, "coverage.json")
+    try:
+        proc = await asyncio.create_subprocess_exec(
+            sys.executable, "-m", "pytest", "backend/tests/",
+            "--cov=backend", "--cov-report=json", "-q", "--tb=no",
+            cwd=project_root,
+            stdout=asyncio.subprocess.DEVNULL,
+            stderr=asyncio.subprocess.DEVNULL,
+            env={**os.environ},
+        )
+        await asyncio.wait_for(proc.wait(), timeout=120)
+        with open(cov_json) as f:
+            data = json.load(f)
+        return round(data["totals"]["percent_covered"])
+    except Exception:
+        logger.warning("pytest-cov run failed; falling back to file-count proxy")
+        return None
 
 @broker.task
 async def analyze_repository(owner: str, repo_name: str, github_token: str | None = None) -> dict[str, Any]:
@@ -52,11 +77,30 @@ async def analyze_repository(owner: str, repo_name: str, github_token: str | Non
         try:
             tech_stack = detect_tech_stack(tree)
             directory_map = map_directories(tree)
+            source_extensions = {".py", ".ts", ".tsx", ".js", ".jsx", ".go", ".java", ".rb", ".rs"}
+            source_files = [
+                item for item in tree
+                if item.get("type") == "blob"
+                and any(item.get("path", "").endswith(ext) for ext in source_extensions)
+            ]
+            test_files = [
+                item for item in source_files
+                if "/test" in item.get("path", "").lower()
+                or item.get("path", "").lower().startswith("test")
+                or ".test." in item.get("path", "").lower()
+                or ".spec." in item.get("path", "").lower()
+                or "/__tests__/" in item.get("path", "").lower()
+            ]
+            test_file_count = len(test_files)
+            total_source = len(source_files)
+            test_coverage_pct = await _run_pytest_cov() or None
             _emit("tech_stack", "done", {"detected": tech_stack})
         except Exception as exc:
             _emit("tech_stack", "error", {"error": str(exc)})
             tech_stack = []
             directory_map = []
+            test_file_count = 0
+            test_coverage_pct = None
 
         _emit("issues", "started")
         try:
@@ -91,6 +135,8 @@ async def analyze_repository(owner: str, repo_name: str, github_token: str | Non
         },
         "tech_stack": tech_stack,
         "directory_map": directory_map,
+        "test_file_count": test_file_count,
+        "test_coverage_pct": test_coverage_pct,
         "issues": issues,
         "steps": steps,
     }

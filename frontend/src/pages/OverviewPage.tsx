@@ -26,7 +26,7 @@ export default function OverviewPage() {
       <div className="page-body">
         <div className="grid2"><TechStack stack={tech_stack} /><DirectoryMap directories={directory_map} /></div>
         <ArchDiagram taskId={taskId} repoName={result.repo} />
-        <RepoStats openIssues={metadata.open_issues} goodFirstIssues={goodFirstIssues} />
+        <RepoStats openIssues={metadata.open_issues} goodFirstIssues={goodFirstIssues} testFileCount={result.test_file_count} testCoveragePct={result.test_coverage_pct} />
         <QAPanel taskId={taskId} />
         {issueError && <p className="notice error mt16" role="alert">{issueError}</p>}
       </div>

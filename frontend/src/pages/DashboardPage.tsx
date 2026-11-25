@@ -3,10 +3,12 @@ import { useNavigate } from 'react-router-dom'
 import { useAnalysis, getRepoHistory, type RepoHistoryEntry } from '../hooks/useAnalysis'
 import { parseGitHubRepository } from '../utils/validation'
 import WorkflowIcon from '../components/WorkflowIcon'
+import { useAuth } from '../context/useAuth'
 
 export default function DashboardPage() {
   const navigate = useNavigate()
   const analysis = useAnalysis()
+  const { user } = useAuth()
   const [repository, setRepository] = useState('')
   const [inputError, setInputError] = useState('')
   const [existingEntry, setExistingEntry] = useState<RepoHistoryEntry | null>(null)
@@ -28,7 +30,7 @@ export default function DashboardPage() {
     }
     setInputError('')
     const fullName = `${parsed.owner}/${parsed.repo}`
-    const history = getRepoHistory()
+    const history = getRepoHistory(user?.id)
     const found = history.find(e => e.fullName.toLowerCase() === fullName.toLowerCase())
     if (found) {
       setExistingEntry(found)

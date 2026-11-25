@@ -6,6 +6,7 @@ import {
   startAnalysis,
   subscribeToProgress,
 } from '../api/analyze'
+import { useAuth } from '../context/useAuth'
 
 type Status = 'idle' | 'starting' | 'running' | 'done' | 'error'
 
@@ -29,31 +30,40 @@ export interface RepoHistoryEntry {
   analyzedAt: string
 }
 
-const HISTORY_KEY = 'contribiq_repo_history'
 const MAX_HISTORY = 10
 
-export function getRepoHistory(): RepoHistoryEntry[] {
+function historyKey(userId: string) {
+  return `contribiq_repo_history_${userId}`
+}
+
+export function getRepoHistory(userId?: string): RepoHistoryEntry[] {
+  const key = userId ? historyKey(userId) : 'contribiq_repo_history'
   try {
-    return JSON.parse(localStorage.getItem(HISTORY_KEY) ?? '[]') as RepoHistoryEntry[]
+    return JSON.parse(localStorage.getItem(key) ?? '[]') as RepoHistoryEntry[]
   } catch {
     return []
   }
 }
 
-export function removeFromHistory(taskId: string): RepoHistoryEntry[] {
-  const updated = getRepoHistory().filter(e => e.taskId !== taskId)
-  localStorage.setItem(HISTORY_KEY, JSON.stringify(updated))
+export function removeFromHistory(taskId: string, userId?: string): RepoHistoryEntry[] {
+  const key = userId ? historyKey(userId) : 'contribiq_repo_history'
+  const updated = getRepoHistory(userId).filter(e => e.taskId !== taskId)
+  localStorage.setItem(key, JSON.stringify(updated))
   return updated
 }
 
-function saveToHistory(taskId: string, result: AnalysisResult) {
+function saveToHistory(taskId: string, result: AnalysisResult, userId?: string) {
+  const key = userId ? historyKey(userId) : 'contribiq_repo_history'
   const fullName = result.metadata.full_name || `${result.owner}/${result.repo}`
   const entry: RepoHistoryEntry = { taskId, fullName, analyzedAt: new Date().toISOString() }
-  const existing = getRepoHistory().filter(e => e.taskId !== taskId)
-  localStorage.setItem(HISTORY_KEY, JSON.stringify([entry, ...existing].slice(0, MAX_HISTORY)))
+  const existing = getRepoHistory(userId).filter(e => e.taskId !== taskId)
+  localStorage.setItem(key, JSON.stringify([entry, ...existing].slice(0, MAX_HISTORY)))
 }
 
 export function useAnalysis(): UseAnalysisState & UseAnalysisActions {
+  const { user } = useAuth()
+  const userId = user?.id
+
   const [state, setState] = useState<UseAnalysisState>({
     status: 'idle',
     taskId: null,
@@ -83,7 +93,7 @@ export function useAnalysis(): UseAnalysisState & UseAnalysisActions {
       },
       (result) => {
         if (generation !== generationRef.current) return
-        if (taskIdRef.current) saveToHistory(taskIdRef.current, result)
+        if (taskIdRef.current) saveToHistory(taskIdRef.current, result, userId)
         setState((prev) => ({ ...prev, status: 'done', result }))
       },
       (error) => {
@@ -91,7 +101,7 @@ export function useAnalysis(): UseAnalysisState & UseAnalysisActions {
         setState((prev) => ({ ...prev, status: 'error', error }))
       },
     )
-  }, [])
+  }, [userId])
 
   const run = useCallback(
     async (owner: string, repo: string, githubToken?: string) => {
