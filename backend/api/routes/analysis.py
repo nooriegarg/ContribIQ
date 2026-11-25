@@ -160,13 +160,11 @@ async def start_diagram(
         await delete_key(cache_key)
 
     settings = get_settings()
-    github_token = await get_key(f"gh-token:{current_user.id}") or settings.GITHUB_TOKEN
     task = await generate_diagram.kiq(
         owner=data["owner"],
         repo_name=data["repo"],
         description=data.get("metadata", {}).get("description"),
         tech_stack=data.get("tech_stack", []),
-        github_token=github_token,
     )
     await set_key(cache_key, task.task_id, ttl=86400)
     return {"diagram_task_id": task.task_id}

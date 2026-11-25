@@ -9,7 +9,7 @@
 
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
-import React, { useState } from 'react'
+import { useState } from 'react'
 import { getRepoHistory, removeFromHistory } from '../../hooks/useAnalysis'
 
 const HISTORY_KEY = 'contribiq_repo_history'
