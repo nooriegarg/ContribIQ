@@ -1,3 +1,10 @@
+## [1.0.1](https://github.com/nooriegarg/ContribIQ/compare/v1.0.0...v1.0.1) (2026-11-26)
+
+
+### Bug Fixes
+
+* deduplicate repo switcher entries and close dropdown on outside click ([#143](https://github.com/nooriegarg/ContribIQ/issues/143)) ([749acda](https://github.com/nooriegarg/ContribIQ/commit/749acda4d7b9ddcbab215c872c234c4c9ba64dae))
+
 # Changelog
 
 All notable changes to ContribIQ are documented here.
