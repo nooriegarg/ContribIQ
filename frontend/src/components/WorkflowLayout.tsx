@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link, Navigate, Outlet, useLocation, useMatch, useNavigate, useParams } from 'react-router-dom'
 import { getAnalysisResult, type AnalysisResult } from '../api/analyze'
 import { useAuth } from '../context/useAuth'
@@ -61,6 +61,7 @@ export default function WorkflowLayout({ hero = false }: { hero?: boolean }) {
   const [attempt, setAttempt] = useState(0)
   const [history, setHistory] = useState<RepoHistoryEntry[]>([])
   const [switcherOpen, setSwitcherOpen] = useState(false)
+  const switcherRef = useRef<HTMLDivElement>(null)
   const [switchBlocked, setSwitchBlocked] = useState(false)
   const [deleteConfirmTaskId, setDeleteConfirmTaskId] = useState<string | null>(null)
   const [analysisReady, setAnalysisReady] = useState(() => !hero && isAnalysisReady(taskId))
@@ -123,6 +124,17 @@ export default function WorkflowLayout({ hero = false }: { hero?: boolean }) {
     }, 1500)
     return () => clearInterval(interval)
   }, [hero, taskId, analysisReady])
+
+  useEffect(() => {
+    if (!switcherOpen) return
+    function handleOutsideClick(e: MouseEvent) {
+      if (switcherRef.current && !switcherRef.current.contains(e.target as Node)) {
+        setSwitcherOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleOutsideClick)
+    return () => document.removeEventListener('mousedown', handleOutsideClick)
+  }, [switcherOpen])
 
   function handleSwitchRepo(entry: RepoHistoryEntry) {
     setSwitcherOpen(false)
@@ -228,7 +240,7 @@ export default function WorkflowLayout({ hero = false }: { hero?: boolean }) {
             </nav>
             <footer className="sb-footer">
               {history.length > 1 ? (
-                <div className="sb-switcher">
+                <div className="sb-switcher" ref={switcherRef}>
                   <button
                     className={`sb-switcher-btn${!analysisReady ? ' locked' : ''}`}
                     onClick={() => analysisReady ? setSwitcherOpen(o => !o) : setSwitchBlocked(true)}

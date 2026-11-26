@@ -5,7 +5,7 @@ from typing import Any
 
 from litellm import acompletion
 
-from backend.core.config import get_settings, ai_kwargs
+from backend.core.config import get_settings
 
 logger = logging.getLogger(__name__)
 
@@ -84,11 +84,27 @@ async def generate_onboarding_plan(analysis_result: dict[str, Any]) -> dict[str,
         directories=directories or "not available",
     )
 
-    response = await acompletion(
-        **ai_kwargs(settings),
-        messages=[{"role": "user", "content": prompt}],
-        temperature=0.2,
-    )
+    api_key = getattr(settings, 'ANTHROPIC_AUTH_TOKEN', None) or getattr(settings, 'ANTHROPIC_API_KEY', None)
+    if api_key:
+        kwargs: dict = dict(
+            model='claude-haiku-4-5',
+            api_key=api_key,
+            messages=[{"role": "user", "content": prompt}],
+            max_tokens=2048,
+            temperature=0.2,
+        )
+        base_url = getattr(settings, 'ANTHROPIC_BASE_URL', None)
+        if base_url:
+            kwargs['api_base'] = base_url
+        response = await acompletion(**kwargs)
+    else:
+        response = await acompletion(
+            model='ollama/qwen2.5-coder:7b',
+            api_base=settings.OLLAMA_URL,
+            messages=[{"role": "user", "content": prompt}],
+            max_tokens=2048,
+            temperature=0.2,
+        )
 
     raw: str = response.choices[0].message.content or ""
 

@@ -25,25 +25,28 @@ def estimate_coverage():
 
 
 def test_estimate_returns_ratio_as_percent(estimate_coverage):
-    assert estimate_coverage(2, 10) == 20
+    # 2 test files matching 2 of 10 source files = 2/10 = 20%
+    assert estimate_coverage(["test_a.py", "test_b.py"], ["a.py", "b.py", "c.py", "d.py", "e.py", "f.py", "g.py", "h.py", "i.py", "j.py"]) == 20
 
 
 def test_estimate_rounds_result(estimate_coverage):
-    # 3/7 = 42.857... → 43
-    assert estimate_coverage(3, 7) == 43
+    # 1 matched + 1 unmatched*2 = 3 covered out of 7 = 43%
+    assert estimate_coverage(["test_a.py", "test_unrelated.py"], ["a.py", "b.py", "c.py", "d.py", "e.py", "f.py", "g.py"]) == 43
 
 
 def test_estimate_caps_at_100(estimate_coverage):
-    # More test files than source files shouldn't exceed 100%
-    assert estimate_coverage(10, 5) == 100
+    # Many test files covering few source files shouldn't exceed 100%
+    assert estimate_coverage(["test_a.py", "test_b.py", "test_c.py", "test_x.py", "test_y.py",
+                               "test_z.py", "test_m.py", "test_n.py", "test_o.py", "test_p.py"],
+                              ["a.py", "b.py", "c.py", "d.py", "e.py"]) == 100
 
 
 def test_estimate_returns_none_when_no_source_files(estimate_coverage):
-    assert estimate_coverage(0, 0) is None
+    assert estimate_coverage([], []) is None
 
 
 def test_estimate_returns_zero_when_no_test_files(estimate_coverage):
-    assert estimate_coverage(0, 10) == 0
+    assert estimate_coverage([], ["a.py", "b.py"]) == 0
 
 
 # ---------------------------------------------------------------------------

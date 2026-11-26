@@ -40,6 +40,7 @@ def _make_row(file_path, content="x"):
 
 
 @pytest.mark.asyncio
+@pytest.mark.asyncio
 async def test_retrieve_chunks_deduplicates_same_file():
     """Multiple chunks from the same file should collapse to one."""
     rows = [
@@ -49,7 +50,10 @@ async def test_retrieve_chunks_deduplicates_same_file():
     ]
     result_mock = MagicMock()
     result_mock.__iter__ = MagicMock(return_value=iter(rows))
+    raw_conn = MagicMock()
+    raw_conn.run_sync = AsyncMock()
     db = MagicMock()
+    db.connection = AsyncMock(return_value=raw_conn)
     db.execute = AsyncMock(return_value=result_mock)
 
     import uuid
@@ -67,7 +71,10 @@ async def test_retrieve_chunks_respects_max_chunks_limit():
     rows = [_make_row(f"file_{i}.py") for i in range(qa_service._MAX_CHUNKS + 5)]
     result_mock = MagicMock()
     result_mock.__iter__ = MagicMock(return_value=iter(rows))
+    raw_conn = MagicMock()
+    raw_conn.run_sync = AsyncMock()
     db = MagicMock()
+    db.connection = AsyncMock(return_value=raw_conn)
     db.execute = AsyncMock(return_value=result_mock)
 
     import uuid

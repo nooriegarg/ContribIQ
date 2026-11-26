@@ -39,7 +39,14 @@ function historyKey(userId: string) {
 export function getRepoHistory(userId?: string): RepoHistoryEntry[] {
   const key = userId ? historyKey(userId) : 'contribiq_repo_history'
   try {
-    return JSON.parse(localStorage.getItem(key) ?? '[]') as RepoHistoryEntry[]
+    const all = JSON.parse(localStorage.getItem(key) ?? '[]') as RepoHistoryEntry[]
+    // Deduplicate by fullName, keeping the most recent entry (first occurrence after sort)
+    const seen = new Set<string>()
+    return all.filter(e => {
+      if (seen.has(e.fullName)) return false
+      seen.add(e.fullName)
+      return true
+    })
   } catch {
     return []
   }
@@ -56,7 +63,7 @@ function saveToHistory(taskId: string, result: AnalysisResult, userId?: string) 
   const key = userId ? historyKey(userId) : 'contribiq_repo_history'
   const fullName = result.metadata.full_name || `${result.owner}/${result.repo}`
   const entry: RepoHistoryEntry = { taskId, fullName, analyzedAt: new Date().toISOString() }
-  const existing = getRepoHistory(userId).filter(e => e.taskId !== taskId)
+  const existing = getRepoHistory(userId).filter(e => e.taskId !== taskId && e.fullName !== fullName)
   localStorage.setItem(key, JSON.stringify([entry, ...existing].slice(0, MAX_HISTORY)))
 }
 

@@ -16,7 +16,7 @@ from litellm import acompletion
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.core.config import get_settings, ai_kwargs
+from backend.core.config import get_settings
 from backend.models.issue import Issue
 from backend.services.github_client import GitHubClient
 
@@ -81,11 +81,27 @@ _CHECKLIST = [
 
 async def _llm(prompt: str) -> str:
     settings = get_settings()
-    response = await acompletion(
-        **ai_kwargs(settings),
-        messages=[{"role": "user", "content": prompt}],
-        temperature=0.2,
-    )
+    api_key = getattr(settings, 'ANTHROPIC_AUTH_TOKEN', None) or getattr(settings, 'ANTHROPIC_API_KEY', None)
+    if api_key:
+        kwargs: dict = dict(
+            model='claude-haiku-4-5',
+            api_key=api_key,
+            messages=[{"role": "user", "content": prompt}],
+            max_tokens=1024,
+            temperature=0.2,
+        )
+        base_url = getattr(settings, 'ANTHROPIC_BASE_URL', None)
+        if base_url:
+            kwargs['api_base'] = base_url
+        response = await acompletion(**kwargs)
+    else:
+        response = await acompletion(
+            model='ollama/qwen2.5-coder:7b',
+            api_base=settings.OLLAMA_URL,
+            messages=[{"role": "user", "content": prompt}],
+            max_tokens=1024,
+            temperature=0.2,
+        )
     return response.choices[0].message.content or ""
 
 
@@ -145,10 +161,20 @@ async def _generate_implementation_workflow(issue: Issue) -> list[str]:
     ]
 
 
+def _keyword_score(pr_title: str, issue_title: str, issue_labels: list[str]) -> int:
+    stop = {"the", "a", "an", "in", "on", "at", "to", "for", "of", "and", "or", "is",
+            "are", "was", "with", "from", "by", "not", "this", "that", "be", "it"}
+    pr_words = {w.lower().strip(".,:#()-") for w in pr_title.split()} - stop
+    issue_words = {w.lower().strip(".,:#()-") for w in issue_title.split()} - stop
+    label_words = {w.lower().strip(".,:#()-") for label in issue_labels for w in label.split("-")}
+    return len(pr_words & (issue_words | label_words))
+
+
 async def find_similar_prs(
     owner: str,
     repo: str,
     issue_title: str,
+    issue_labels: list[str] | None = None,
     github_token: str | None = None,
 ) -> list[dict[str, Any]]:
     try:
@@ -158,15 +184,27 @@ async def find_similar_prs(
         logger.warning("Could not fetch PRs for %s/%s: %s", owner, repo, exc)
         return []
 
+    merged = [pr for pr in prs if pr.get("merged_at")]
+
+    labels = issue_labels or []
+    scored = sorted(
+        merged,
+        key=lambda pr: _keyword_score(pr["title"], issue_title, labels),
+        reverse=True,
+    )
+
+    # If no keyword overlap at all, fall back to the 5 most-recently merged PRs
+    if not scored or _keyword_score(scored[0]["title"], issue_title, labels) == 0:
+        scored = merged
+
     return [
         {
             "number": pr["number"],
             "title": pr["title"],
             "url": pr.get("html_url"),
         }
-        for pr in prs
-        if pr.get("merged_at")
-    ][:5]
+        for pr in scored[:5]
+    ]
 
 
 async def get_issue_detail(
@@ -190,7 +228,7 @@ async def get_issue_detail(
     explanation, impact_chain, similar_prs, implementation_steps = await asyncio.gather(
         _generate_explanation(issue),
         _generate_impact_chain(issue),
-        find_similar_prs(owner, repo, issue.title, github_token),
+        find_similar_prs(owner, repo, issue.title, issue.labels or [], github_token),
         _generate_implementation_workflow(issue),
     )
 

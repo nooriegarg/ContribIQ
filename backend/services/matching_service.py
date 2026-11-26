@@ -7,7 +7,7 @@ from typing import Any
 
 from litellm import acompletion
 
-from backend.core.config import get_settings, ai_kwargs
+from backend.core.config import get_settings
 from backend.schemas.match import MatchResult
 
 REASON_COUNT = 3
@@ -82,10 +82,27 @@ def parse_match_response(raw: str) -> tuple[int, list[str]]:
 
 async def match_issue(profile: dict[str, Any], issue: dict[str, Any]) -> MatchResult:
     settings = get_settings()
-    response = await acompletion(
-        **ai_kwargs(settings),
-        messages=[{"role": "user", "content": build_match_prompt(profile, issue)}],
-        temperature=0.2,
-    )
+    prompt = build_match_prompt(profile, issue)
+    api_key = getattr(settings, 'ANTHROPIC_AUTH_TOKEN', None) or getattr(settings, 'ANTHROPIC_API_KEY', None)
+    if api_key:
+        kwargs: dict = dict(
+            model='claude-haiku-4-5',
+            api_key=api_key,
+            messages=[{"role": "user", "content": prompt}],
+            max_tokens=512,
+            temperature=0.2,
+        )
+        base_url = getattr(settings, 'ANTHROPIC_BASE_URL', None)
+        if base_url:
+            kwargs['api_base'] = base_url
+        response = await acompletion(**kwargs)
+    else:
+        response = await acompletion(
+            model='ollama/qwen2.5-coder:7b',
+            api_base=settings.OLLAMA_URL,
+            messages=[{"role": "user", "content": prompt}],
+            max_tokens=512,
+            temperature=0.2,
+        )
     score, reasons = parse_match_response(response.choices[0].message.content or "")
     return MatchResult(issue_id=issue["id"], match_pct=score, reasons=reasons)
