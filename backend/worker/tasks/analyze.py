@@ -15,11 +15,34 @@ from backend.worker.broker import broker
 
 logger = logging.getLogger(__name__)
 
-def _estimate_test_coverage(test_file_count: int, total_source: int) -> int | None:
-    """Estimate test coverage as a ratio of test files to source files (capped at 100)."""
-    if total_source == 0:
+def _estimate_test_coverage(test_files: list[str], source_files: list[str]) -> int | None:
+    """Estimate test coverage by name-matching test files to source files.
+
+    Each test file that matches a source file by stem counts as covering that file.
+    Unmatched test files are assumed to cover 2 additional source files each
+    (integration/e2e tests that span multiple modules).
+    """
+    if not source_files:
         return None
-    return min(100, round((test_file_count / total_source) * 100))
+    if not test_files:
+        return 0
+
+    import os
+    source_stems = {os.path.splitext(os.path.basename(p))[0].lower() for p in source_files}
+
+    matched = 0
+    unmatched = 0
+    for t in test_files:
+        stem = os.path.splitext(os.path.basename(t))[0].lower()
+        # strip common test prefixes/suffixes: test_, _test, .test, .spec
+        clean = stem.removeprefix("test_").removesuffix("_test").removesuffix(".test").removesuffix(".spec")
+        if clean in source_stems or stem in source_stems:
+            matched += 1
+        else:
+            unmatched += 1
+
+    estimated_covered = matched + unmatched * 2
+    return min(100, round(estimated_covered / len(source_files) * 100))
 
 @broker.task
 async def analyze_repository(owner: str, repo_name: str, github_token: str | None = None) -> dict[str, Any]:
@@ -113,8 +136,10 @@ async def analyze_repository(owner: str, repo_name: str, github_token: str | Non
                 or "/__tests__/" in item.get("path", "").lower()
             ]
             test_file_count = len(test_files)
-            non_test_source = len(source_files) - test_file_count
-            test_coverage_pct = _estimate_test_coverage(test_file_count, non_test_source)
+            non_test_source = [f["path"] for f in source_files if f not in test_files]
+            test_coverage_pct = _estimate_test_coverage(
+                [f["path"] for f in test_files], non_test_source
+            )
             _emit("tech_stack", "done", {"detected": tech_stack})
         except Exception as exc:
             _emit("tech_stack", "error", {"error": str(exc)})
