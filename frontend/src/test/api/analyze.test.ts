@@ -119,4 +119,40 @@ describe('analyze API', () => {
       await expect(getReadinessScore('task-abc', 1)).rejects.toThrow('Unauthorized')
     })
   })
+
+  describe('getGeneratedIssues', () => {
+    it('calls correct endpoint', async () => {
+      const fakeIssues = [
+        {
+          title: 'Add docstring to user_service.py',
+          description: 'The function is missing documentation.',
+          files_affected: ['backend/services/user_service.py'],
+          skills: ['Python'],
+          difficulty: 1.5,
+          estimated_hours: 0.5,
+          why_beginner_friendly: 'No logic change required, just documentation.',
+          gap_kind: 'missing_docstring',
+          source: 'ai_generated',
+        },
+      ]
+      mockApiCall.mockResolvedValueOnce(fakeIssues)
+      const { getGeneratedIssues } = await import('../../api/analyze')
+      const result = await getGeneratedIssues('task-1')
+      expect(result).toEqual(fakeIssues)
+      expect(mockApiCall).toHaveBeenCalledWith('/analysis/result/task-1/generated-issues')
+    })
+
+    it('returns empty array when no generated issues exist', async () => {
+      mockApiCall.mockResolvedValueOnce([])
+      const { getGeneratedIssues } = await import('../../api/analyze')
+      const result = await getGeneratedIssues('task-1')
+      expect(result).toEqual([])
+    })
+
+    it('propagates errors from apiCall', async () => {
+      mockApiCall.mockRejectedValueOnce(new Error('Analysis not found'))
+      const { getGeneratedIssues } = await import('../../api/analyze')
+      await expect(getGeneratedIssues('bad-task')).rejects.toThrow('Analysis not found')
+    })
+  })
 })
