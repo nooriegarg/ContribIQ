@@ -174,7 +174,7 @@ export default function UserProfilePage() {
 
   useEffect(() => {
     if (!user?.github_username) return
-    let active = true
+    const active = true
     // Seed from DB immediately so badges don't flicker as locked while PRs load
     getBadges().then(stored => {
       if (!active || stored.length === 0) return
