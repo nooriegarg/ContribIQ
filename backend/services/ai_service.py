@@ -242,7 +242,7 @@ async def _llm(system: str, user: str, settings) -> str:
     api_key = getattr(settings, 'ANTHROPIC_AUTH_TOKEN', None) or getattr(settings, 'ANTHROPIC_API_KEY', None)
     if api_key:
         kwargs: dict = dict(
-            model='claude-haiku-4-5',
+            model='anthropic/claude-haiku-4-5',
             api_key=api_key,
             messages=[{'role': 'user', 'content': f'{system}\n\n{user}'}],
             max_tokens=4000,

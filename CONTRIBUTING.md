@@ -14,6 +14,7 @@ This document explains how to get started, what the workflow looks like, and wha
 - [Making Changes](#making-changes)
 - [Pull Request Process](#pull-request-process)
 - [Code Style](#code-style)
+- [Release Process](#release-process)
 - [Reporting Bugs](#reporting-bugs)
 
 ---
@@ -180,6 +181,36 @@ If you find a bug, please open an issue and include:
 - Whether you ran the API and the worker (analysis and diagram generation need both), and whether Ollama is running
 
 The more detail the better — vague bug reports are hard to reproduce and fix.
+
+---
+
+## Release Process
+
+Releases are fully automated via [semantic-release](https://github.com/semantic-release/semantic-release) and triggered on every push to `main`. **You do not need to manually create tags or update the changelog** — the CI pipeline handles all of that.
+
+### How it works
+
+1. `semantic-release` reads every commit on `main` since the last release.
+2. It determines the next version number from the commit types (see below).
+3. It creates a GitHub release and git tag, generates release notes, and opens a PR to update `CHANGELOG.md`.
+
+### Commit types and version bumps
+
+| Commit prefix | Example | Version bump |
+|---|---|---|
+| `fix:` | `fix: handle rate limit from GitHub API` | Patch (`0.0.x`) |
+| `feat:` | `feat: add GitLab support` | Minor (`0.x.0`) |
+| `feat!:` or `BREAKING CHANGE:` | `feat!: drop Python 3.11 support` | Major (`x.0.0`) |
+| `docs:`, `chore:`, `test:`, `refactor:` | — | No release |
+| `ci:` | — | No release |
+
+Your PR title and squash-merge commit message determine what version gets released. If your change is user-facing, use `feat:` or `fix:`. If it only affects internals (tests, CI, docs), use the appropriate prefix — no release will be cut.
+
+### What contributors should know
+
+- Use [Conventional Commits](https://www.conventionalcommits.org/) for commit messages (the format is already documented under [Commit messages](#making-changes)).
+- Do not manually edit `CHANGELOG.md` or bump version fields — those are owned by the release bot.
+- If a release PR (`chore(release): update changelog for vX.Y.Z`) is open, don't close it; it will be merged by a maintainer after review.
 
 ---
 
