@@ -18,8 +18,9 @@ export default function ArchDiagram({ taskId, repoName }: ArchDiagramProps) {
   const [sourceFiles, setSourceFiles]     = useState<string[]>([])
   const [retryCount, setRetryCount]       = useState(0)
   const [zoom, setZoom]                   = useState(1)
-  // natural SVG pixel width read from its viewBox, used to compute rendered size
   const naturalWidthRef = useRef<number>(0)
+  // rendered container width captured at zoom=1; zoom target = baseWidth × zoom
+  const baseWidthRef = useRef<number>(0)
   const requestRef = useRef<{ taskId: string; promise: Promise<{ diagram_task_id: string }> } | null>(null)
 
   // ── fetch diagram task id ────────────────────────────────────────────────
@@ -100,7 +101,7 @@ export default function ArchDiagram({ taskId, repoName }: ArchDiagramProps) {
       startOnLoad: false,
       theme: 'base',
       securityLevel: 'antiscript',
-      flowchart: { curve: 'basis', useMaxWidth: true },
+      flowchart: { curve: 'basis', useMaxWidth: false },
       themeVariables: {
         primaryColor: '#dbeafe',
         primaryTextColor: '#172554',
@@ -128,11 +129,19 @@ export default function ArchDiagram({ taskId, repoName }: ArchDiagramProps) {
           svgEl.removeAttribute('height')
           svgEl.style.display = 'block'
           svgEl.style.width = '100%'
+          svgEl.style.maxWidth = 'none'
           svgEl.style.height = 'auto'
+        }
+        // Reset wrapper to 100% and read the actual container pixel width — this
+        // becomes the zoom base so that zoom=1.25 is always 25% wider than the
+        // current display size, regardless of the SVG's viewBox width.
+        if (wrapRef.current) {
+          wrapRef.current.style.width = '100%'
+          baseWidthRef.current = wrapRef.current.clientWidth
         }
         setZoom(1)
       })
-      .catch(reason => {
+      .catch((reason: unknown) => {
         setError(reason instanceof Error ? reason.message : 'The generated diagram could not be rendered.')
         setStatus('error')
       })
@@ -145,8 +154,18 @@ export default function ArchDiagram({ taskId, repoName }: ArchDiagramProps) {
     if (!wrapRef.current) return
     if (zoom === 1) {
       wrapRef.current.style.width = '100%'
-    } else if (naturalWidthRef.current > 0) {
-      wrapRef.current.style.width = `${Math.round(naturalWidthRef.current * zoom)}px`
+    } else {
+      // Lazily capture base on first non-1 zoom if render callback didn't fire yet
+      if (baseWidthRef.current === 0) {
+        wrapRef.current.style.width = '100%'
+        baseWidthRef.current = wrapRef.current.parentElement
+          ? wrapRef.current.parentElement.clientWidth
+          : wrapRef.current.clientWidth
+      }
+      const base = baseWidthRef.current || naturalWidthRef.current
+      if (base > 0) {
+        wrapRef.current.style.width = `${Math.round(base * zoom)}px`
+      }
     }
   }, [zoom])
 
@@ -155,7 +174,7 @@ export default function ArchDiagram({ taskId, repoName }: ArchDiagramProps) {
     setRetryCount(c => c + 1)
   }
 
-  const zoomIn    = () => setZoom(z => Math.min(+(z + 0.25).toFixed(2), 3))
+  const zoomIn    = () => setZoom(z => Math.min(+(z + 0.25).toFixed(2), 2))
   const zoomOut   = () => setZoom(z => Math.max(+(z - 0.25).toFixed(2), 0.25))
   const zoomReset = () => setZoom(1)
 
@@ -172,7 +191,7 @@ export default function ArchDiagram({ taskId, repoName }: ArchDiagramProps) {
             <span style={{ fontSize: 12, color: 'var(--muted)', minWidth: 36, textAlign: 'center' }}>
               {Math.round(zoom * 100)}%
             </span>
-            <button onClick={zoomIn} title="Zoom in" style={btnStyle} disabled={zoom >= 3}>+</button>
+            <button onClick={zoomIn} title="Zoom in" style={btnStyle} disabled={zoom >= 2}>+</button>
             <button onClick={zoomReset} title="Reset to fit" style={{ ...btnStyle, fontSize: 11, padding: '3px 8px', width: 'auto' }}>Fit</button>
           </div>
         )}
@@ -194,12 +213,12 @@ export default function ArchDiagram({ taskId, repoName }: ArchDiagramProps) {
         )
       )}
 
-      {/* Outer scroll container — only scrolls when zoomed in beyond card width */}
-      <div style={{ overflow: 'auto', borderRadius: 6, display: 'flex', justifyContent: 'center' }}>
+      {/* Outer scroll container — plain block so overflow:auto scrolls reliably at all zoom levels */}
+      <div style={{ overflowX: 'auto', borderRadius: 6 }}>
         {/* wrapRef grows/shrinks with zoom; the SVG inside fills it via width:100% */}
         <div
           ref={wrapRef}
-          style={{ width: '100%', transition: 'width 0.15s ease', flexShrink: 0 }}
+          style={{ width: '100%', transition: 'width 0.15s ease' }}
         >
           <div ref={containerRef} />
         </div>
