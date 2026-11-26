@@ -160,12 +160,12 @@ describe('ArchDiagram — initial state', () => {
   beforeEach(() => ssMock.clear())
 
   it('renders the Application Architecture heading', () => {
-    render(<ArchHarness taskId="t1" repoName="org/repo" start={vi.fn(() => new Promise(() => {}))} poll={neverCall} />)
+    render(<ArchHarness taskId="t1" repoName="org/repo" start={vi.fn(() => new Promise<string>(() => {}))} poll={neverCall} />)
     expect(screen.getByRole('heading', { name: /application architecture/i })).toBeInTheDocument()
   })
 
   it('shows generating status text immediately on mount', () => {
-    render(<ArchHarness taskId="t1" repoName="org/repo" start={vi.fn(() => new Promise(() => {}))} poll={neverCall} />)
+    render(<ArchHarness taskId="t1" repoName="org/repo" start={vi.fn(() => new Promise<string>(() => {}))} poll={neverCall} />)
     expect(screen.getByRole('status')).toHaveTextContent(/generating application architecture/i)
   })
 
