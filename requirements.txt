@@ -50,5 +50,5 @@ fastembed==0.9.1
 sse-starlette==3.6.0
 
 # Rate limiting
-slowapi==0.1.9
+slowapi==0.1.10
 pytest-asyncio>=0.23
