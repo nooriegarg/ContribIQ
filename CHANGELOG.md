@@ -1,3 +1,10 @@
+## [1.1.4](https://github.com/nooriegarg/ContribIQ/compare/v1.1.3...v1.1.4) (2026-11-26)
+
+
+### Bug Fixes
+
+* pin release.yml actions to commit SHAs ([#199](https://github.com/nooriegarg/ContribIQ/issues/199)) ([62b9934](https://github.com/nooriegarg/ContribIQ/commit/62b9934269fd8d49d00b343285a2fe266eb58858))
+
 # Changelog
 
 All notable changes to ContribIQ are documented here.
