@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { getIssueDetail, getReadinessScore, type IssueDetail, type ReadinessResult } from '../api/analyze'
 import { useWorkflow } from '../hooks/useWorkflow'
@@ -38,6 +38,8 @@ export default function IssueDetailPage() {
   const [detailError, setDetailError] = useState('')
   const [readiness, setReadiness] = useState<ReadinessResult | null>(null)
   const [readinessLoading, setReadinessLoading] = useState(false)
+  const [showFactors, setShowFactors] = useState(false)
+  const factorsCloseRef = useRef<HTMLButtonElement>(null)
 
   const issue = result && /^\d+$/.test(issueNumber)
     ? getOpenIssues(result).find(item => item.number === Number(issueNumber))
@@ -66,6 +68,14 @@ export default function IssueDetailPage() {
     return () => { active = false }
   }, [tab, issue?.number, taskId, readiness, readinessLoading])
 
+  useEffect(() => {
+    if (!showFactors) return
+    const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') setShowFactors(false) }
+    window.addEventListener('keydown', handler)
+    factorsCloseRef.current?.focus()
+    return () => window.removeEventListener('keydown', handler)
+  }, [showFactors])
+
   if (!result) return null
 
   const issueError = getIssueLoadError(result)
@@ -91,7 +101,59 @@ export default function IssueDetailPage() {
         <div className="detail-meta">
           <span className="badge badge-green">Open at analysis time</span>
           {issue.user && <span className="dm-item">Opened by {issue.user.login}</span>}
-          <span className="dm-item">{detail ? `Difficulty: ${Math.round(detail.difficulty)}/5` : 'Difficulty: loading...'}</span>
+          <span className="dm-item" style={{ position: 'relative' }}>
+            {detail ? `Difficulty: ${Math.round(detail.difficulty)}/5` : 'Difficulty: loading...'}
+            {detail?.difficulty_factors && (() => {
+              const factors = detail.difficulty_factors
+              const labels: Record<string, string> = {
+                files_affected: 'Files changed',
+                complexity: 'Cyclomatic complexity',
+                dependencies: 'Dependency count',
+                domain_knowledge: 'Domain knowledge',
+                estimated_lines: 'Estimated lines',
+              }
+              const sorted = Object.entries(factors).sort(([, a], [, b]) => b - a)
+              if (!sorted.length) return null
+              return (
+                <>
+                  <button
+                    className="diff-why-btn"
+                    onClick={() => setShowFactors(true)}
+                    aria-expanded={showFactors}
+                    aria-haspopup="dialog"
+                  >Why?</button>
+                  {showFactors && (
+                    <div className="diff-modal-backdrop" onClick={() => setShowFactors(false)} role="presentation">
+                      <div className="diff-modal" role="dialog" aria-modal="true" aria-label="Difficulty factors" onClick={e => e.stopPropagation()}>
+                        <div className="diff-modal-header">
+                          <span className="diff-modal-title">Difficulty factors</span>
+                          <button
+                            ref={factorsCloseRef}
+                            className="diff-modal-close"
+                            onClick={() => setShowFactors(false)}
+                            aria-label="Close"
+                          >✕</button>
+                        </div>
+                        <p className="diff-modal-sub">Score components for Issue #{issue.number}</p>
+                        <div className="diff-modal-rows">
+                          {sorted.map(([k, v]) => (
+                            <div className="diff-modal-row" key={k}>
+                              <span className="diff-modal-label">{labels[k] ?? k}</span>
+                              <span className="diff-modal-bar-wrap">
+                                <span className="diff-modal-bar" style={{ width: `${((v as number) / 5) * 100}%` }} />
+                              </span>
+                              <span className="diff-modal-score">{(v as number).toFixed(1)}<span className="diff-modal-denom">/5</span></span>
+                            </div>
+                          ))}
+                        </div>
+                        <p className="diff-modal-note">Overall: <strong>{Math.round(detail.difficulty)}/5</strong></p>
+                      </div>
+                    </div>
+                  )}
+                </>
+              )
+            })()}
+          </span>
         </div>
         <div className="issue-tags mt12">{issue.labels.map(label => <span className="badge badge-blue" key={label.name}>{label.name}</span>)}</div>
       </div>

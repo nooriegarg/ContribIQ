@@ -106,6 +106,11 @@ async def analyze_repository(owner: str, repo_name: str, github_token: str | Non
                         )
             except Exception:
                 logger.exception("Could not ensure embedding for cached %s/%s", owner, repo_name)
+            try:
+                from backend.worker.tasks.score_issues import score_issues
+                await score_issues.kiq(owner=owner, repo_name=repo_name, github_token=github_token)
+            except Exception:
+                logger.exception("Could not trigger issue scoring for cached %s/%s", owner, repo_name)
             return cached
 
         _emit("file_tree", "started")

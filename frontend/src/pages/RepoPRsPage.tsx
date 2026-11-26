@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useLocation, useOutletContext, useSearchParams } from 'react-router-dom'
+import { useLocation, useOutletContext, useParams, useSearchParams } from 'react-router-dom'
 import { getGitHubLinkUrl } from '../api/auth'
 import { getMyPRs, type UserPR } from '../api/profile'
 import { useAuth } from '../context/useAuth'
@@ -42,6 +42,7 @@ function CheckIcon({ conclusion, status }: { conclusion: string | null; status: 
 
 export default function RepoPRsPage() {
   const { result } = useOutletContext<WorkflowContext>()
+  const { taskId = '' } = useParams()
   const { user } = useAuth()
   const location = useLocation()
   const [searchParams, setSearchParams] = useSearchParams()
@@ -59,8 +60,12 @@ export default function RepoPRsPage() {
     if (linkedBanner) setSearchParams({}, { replace: true })
   }, [linkedBanner, setSearchParams])
 
-  const owner = result?.owner ?? ''
-  const repo = result?.repo ?? ''
+  const owner = result?.owner ?? (() => {
+    try { return JSON.parse(localStorage.getItem(`contribiq:repo:${taskId}`) ?? '{}').owner ?? '' } catch { return '' }
+  })()
+  const repo = result?.repo ?? (() => {
+    try { return JSON.parse(localStorage.getItem(`contribiq:repo:${taskId}`) ?? '{}').repo ?? '' } catch { return '' }
+  })()
   const repoFull = owner && repo ? `${owner}/${repo}` : null
 
   useEffect(() => {

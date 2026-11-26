@@ -155,6 +155,7 @@ export interface IssueDetail {
   url: string | null
   labels: string[]
   difficulty: number
+  difficulty_factors: Record<string, number>
   explanation: string
   files_affected: { path: string; role: string }[]
   prerequisites: { title: string; description: string }[]

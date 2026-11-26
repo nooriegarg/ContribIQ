@@ -239,6 +239,7 @@ async def get_issue_detail(
         "url": issue.url,
         "labels": issue.labels,
         "difficulty": issue.difficulty,
+        "difficulty_factors": issue.difficulty_factors or {},
         "explanation": explanation,
         "files_affected": [
             {"path": f, "role": "likely affected"}

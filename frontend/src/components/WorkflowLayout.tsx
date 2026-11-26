@@ -57,6 +57,13 @@ export default function WorkflowLayout({ hero = false }: { hero?: boolean }) {
   const [result, setResult] = useState<AnalysisResult | null>(() => {
     try { const c = sessionStorage.getItem(cacheKey); return c ? JSON.parse(c) : null } catch { return null }
   })
+
+  useEffect(() => {
+    if (!result) return
+    try {
+      localStorage.setItem(`contribiq:repo:${taskId}`, JSON.stringify({ owner: result.owner, repo: result.repo }))
+    } catch { /* storage unavailable */ }
+  }, [taskId, result?.owner, result?.repo])
   const [loading, setLoading] = useState(!hero && !sessionStorage.getItem(cacheKey))
   const [error, setError] = useState('')
   const [attempt, setAttempt] = useState(0)
