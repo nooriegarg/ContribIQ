@@ -43,7 +43,7 @@ async def github_login():
     params = urlencode({
         "client_id": settings.GITHUB_CLIENT_ID,
         "redirect_uri": f"{settings.BACKEND_URL}/auth/github/callback",
-        "scope": "read:user user:email",
+        "scope": "read:user user:email repo",
         "state": state,
     })
     return RedirectResponse(url=f"{GITHUB_AUTHORIZE_URL}?{params}")
@@ -88,7 +88,7 @@ async def github_link(
     params = urlencode({
         "client_id": settings.GITHUB_CLIENT_ID,
         "redirect_uri": f"{settings.BACKEND_URL}/auth/github/callback",
-        "scope": "read:user user:email",
+        "scope": "read:user user:email repo",
         "state": state,
     })
     return RedirectResponse(url=f"{GITHUB_AUTHORIZE_URL}?{params}")

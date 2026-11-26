@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom'
 import { getGitHubLinkUrl, updateCurrentUser } from '../api/auth'
-import { getProfile, getMyPRs, updateProfile, getBadges, syncBadges, type ContributorProfile, type UserPR } from '../api/profile'
+import { getProfile, getMyPRs, updateProfile, type ContributorProfile, type UserPR } from '../api/profile'
 import Avatar from '../components/Avatar'
 import ChipSelector from '../components/ChipSelector'
 import ExperienceSelector from '../components/ExperienceSelector'
@@ -170,26 +170,8 @@ export default function UserProfilePage() {
     return () => { active = false }
   }, [attempt])
 
-  const badgesLoadedRef = useRef(false)
-
   useEffect(() => {
     if (!user?.github_username) return
-    const active = true
-    // Seed from DB immediately so badges don't flicker as locked while PRs load
-    getBadges().then(stored => {
-      if (!active || stored.length === 0) return
-      setBadges(prev => prev.map(b => {
-        const s = stored.find(x => x.badge_id === b.id)
-        return s ? { ...b, earned: s.earned, count: s.count ?? undefined } : b
-      }))
-    }).catch(() => {})
-  }, [user?.github_username])
-
-  useEffect(() => {
-    if (!user?.github_username) return
-    // Don't re-fetch if we already loaded for this session — prevents re-mounts resetting badges
-    if (badgesLoadedRef.current) return
-    badgesLoadedRef.current = true
     let active = true
     setPrsLoading(true)
     const githubToken = localStorage.getItem('github_token')
@@ -197,13 +179,8 @@ export default function UserProfilePage() {
       .then(data => {
         if (!active) return
         const merged = data.filter(pr => pr.merged_at !== null)
-        console.log('[badges] total PRs:', data.length, 'merged:', merged.length, merged.map(p => p.repo + '#' + p.number))
         const computed = computeBadges(merged)
-        // Only overwrite DB-seeded state if the API actually returned PRs
-        if (data.length > 0) {
-          setBadges(computed)
-          syncBadges(computed.map(b => ({ badge_id: b.id, earned: b.earned, count: b.count ?? null }))).catch(() => {})
-        }
+        setBadges(computed)
       })
       .catch(() => {})
       .finally(() => { if (active) setPrsLoading(false) })

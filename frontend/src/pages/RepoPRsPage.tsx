@@ -48,7 +48,7 @@ export default function RepoPRsPage() {
 
   const PAGE_SIZE = 15
 
-  const [prState, setPrState] = useState<PRState>('open')
+  const [prState, setPrState] = useState<PRState>('all')
   const [prs, setPRs] = useState<UserPR[] | null>(null)
   const [page, setPage] = useState(1)
   const [loading, setLoading] = useState(false)

@@ -1,8 +1,9 @@
 import asyncio
+import logging
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy import select, delete
+from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.api.routes.auth import get_current_user
@@ -11,8 +12,10 @@ from backend.models.badge import UserBadge
 from backend.models.profile import ContributorProfile
 from backend.models.user import User
 from backend.schemas.profile import ProfileRead, ProfileUpdate, BadgeSyncItem
-from backend.services.valkey_client import get_valkey
 from backend.services.github_client import GitHubClient
+from backend.services.valkey_client import get_key, get_valkey
+
+_log = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/users/me", tags=["profile"])
 
@@ -91,10 +94,16 @@ async def get_my_prs(
     if not username:
         return []
 
+    # Fall back to the token stored at OAuth time if the client didn't pass one
+    effective_token = github_token
+    if not effective_token:
+        stored = await get_key(f"gh-token:{current_user.id}")
+        effective_token = stored or None
+
     allowed_states = {"open", "closed", "all"}
     pr_state = state if state in allowed_states else "open"
 
-    async with GitHubClient(token=github_token) as client:
+    async with GitHubClient(token=effective_token) as client:
         try:
             prs = await client.get_user_prs(username, state=pr_state)
         except Exception:
@@ -111,7 +120,7 @@ async def get_my_prs(
         checks: list[dict] = []
         if owner and repo:
             try:
-                async with GitHubClient(token=github_token) as c:
+                async with GitHubClient(token=effective_token) as c:
                     pr_detail = await c._http.get(
                         f"https://api.github.com/repos/{owner}/{repo}/pulls/{pr['number']}",
                         headers=c._auth_headers(),
@@ -124,8 +133,13 @@ async def get_my_prs(
                         head_sha = detail_json.get("head", {}).get("sha")
                         if head_sha:
                             checks = await c.get_check_runs(owner, repo, head_sha)
-            except Exception:
-                pass
+                    else:
+                        _log.warning(
+                            "PR detail %s/%s#%s: HTTP %s (token_present=%s)",
+                            owner, repo, pr['number'], pr_detail.status_code, bool(effective_token),
+                        )
+            except Exception as exc:
+                _log.warning("PR enrich error %s/%s#%s: %s", owner, repo, pr.get('number'), exc)
 
         overall = _summarise_checks(checks)
         return {
