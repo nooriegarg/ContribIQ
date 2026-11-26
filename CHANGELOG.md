@@ -1,3 +1,10 @@
+## [1.0.2](https://github.com/nooriegarg/ContribIQ/compare/v1.0.1...v1.0.2) (2026-11-26)
+
+
+### Bug Fixes
+
+* improve test coverage estimate using name-matching heuristic ([#144](https://github.com/nooriegarg/ContribIQ/issues/144)) ([321712b](https://github.com/nooriegarg/ContribIQ/commit/321712bf1f039509149efda25c6d9b9f9d8e399c))
+
 # Changelog
 
 All notable changes to ContribIQ are documented here.
