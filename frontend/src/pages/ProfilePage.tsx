@@ -10,7 +10,7 @@ import { useWorkflow } from '../hooks/useWorkflow'
 import { useAuth } from '../context/useAuth'
 
 export default function ProfilePage() {
-  const { basePath } = useWorkflow()
+  const { taskId, basePath } = useWorkflow()
   const { user } = useAuth()
   const navigate = useNavigate()
   const cacheKey = `profile:${user?.id ?? 'me'}`
@@ -53,6 +53,10 @@ export default function ProfilePage() {
     return () => { active = false }
   }, [attempt])
 
+  function clearMatchesCache() {
+    try { sessionStorage.removeItem(`matches:${taskId}:${user?.id ?? 'anon'}`) } catch { /* storage unavailable */ }
+  }
+
   async function toggleSelection(
     value: string,
     current: string[],
@@ -66,6 +70,7 @@ export default function ProfilePage() {
       const updated = await updateProfile({ [field]: next })
       setProfile(updated)
       sessionStorage.setItem(cacheKey, JSON.stringify(updated))
+      clearMatchesCache()
     })
     updateQueue.current = request.then(() => undefined, () => undefined)
     try {
@@ -82,6 +87,7 @@ export default function ProfilePage() {
       await updateQueue.current
       const updated = await updateProfile({ languages: languagesSelected, interests: interestsSelected, experience })
       sessionStorage.setItem(cacheKey, JSON.stringify(updated))
+      clearMatchesCache()
       setNotice('Profile saved')
       navigate(`${basePath}/issues`)
     } catch (reason) {

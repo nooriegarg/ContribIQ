@@ -7,6 +7,7 @@ from backend.db.session import get_db
 from backend.models.profile import ContributorProfile
 from backend.models.user import User
 from backend.schemas.profile import ProfileRead, ProfileUpdate
+from backend.services.valkey_client import get_valkey
 
 router = APIRouter(prefix="/users/me", tags=["profile"])
 
@@ -28,6 +29,19 @@ async def get_profile(
         await db.refresh(profile)
 
     return profile
+
+
+async def _bust_matches_cache(user_id: str) -> None:
+    """Delete all cached match results for this user so the next visit re-scores with the new profile."""
+    client = get_valkey()
+    pattern = f"matches:*:{user_id}"
+    cursor = 0
+    while True:
+        cursor, keys = await client.scan(cursor, match=pattern, count=100)
+        if keys:
+            await client.delete(*keys)
+        if cursor == 0:
+            break
 
 
 @router.put("/profile", response_model=ProfileRead)
@@ -56,4 +70,7 @@ async def update_profile(
 
     await db.commit()
     await db.refresh(profile)
+
+    await _bust_matches_cache(str(current_user.id))
+
     return profile
