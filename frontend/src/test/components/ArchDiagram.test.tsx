@@ -81,7 +81,7 @@ function ArchHarness({
         setStatus('error')
       })
     return () => { active = false }
-  }, [taskId, retryCount])
+  }, [taskId, retryCount, start])
 
   useEffect(() => {
     if (!diagramTaskId || status !== 'generating') return
@@ -100,7 +100,7 @@ function ArchHarness({
         setStatus('error')
       })
     return () => { active = false }
-  }, [diagramTaskId, status])
+  }, [diagramTaskId, status, poll, taskId])
 
   const handleRetry = () => {
     sessionStorage.removeItem(`arch-${taskId}`)
@@ -313,26 +313,17 @@ describe('ArchDiagram — retry', () => {
   })
 
   it('cache is bypassed after retry (retryCount > 0)', async () => {
-    // Seed a cache entry
     ssMock.setItem('arch-t-bypass', JSON.stringify({ syntax: 'cached-syntax', sourceFiles: [] }))
 
     const start = vi.fn()
-      .mockRejectedValueOnce(new Error('Error')) // first call (mount, non-zero retryCount forced by test below)
-    const poll = vi.fn()
-
-    // Trick: render with retryCount forced to bypass cache by passing a fresh taskId
-    // that has no cache, get to error, then set cache and click retry
-    const start2 = vi.fn()
       .mockRejectedValueOnce(new Error('Error'))
       .mockResolvedValueOnce('diag-id-fresh')
-    const poll2 = vi.fn().mockResolvedValue({ syntax: 'fresh', sourceFiles: [] })
+    const poll = vi.fn().mockResolvedValue({ syntax: 'fresh', sourceFiles: [] })
 
-    render(<ArchHarness taskId="t-bypass" repoName="org/repo" start={start2} poll={poll2} />)
+    render(<ArchHarness taskId="t-bypass" repoName="org/repo" start={start} poll={poll} />)
 
-    // With cache seeded, component should load from cache
+    // Cache exists → done state without calling start
     await waitFor(() => expect(screen.getByTestId('zoom-controls')).toBeInTheDocument())
-    expect(start2).not.toHaveBeenCalled()
-
-    // The cache-hit path is verified — when retryCount=0 and cache exists, start is NOT called
+    expect(start).not.toHaveBeenCalled()
   })
 })
