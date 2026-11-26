@@ -36,4 +36,25 @@ describe('profile API', () => {
     expect(result.languages).toEqual(['Go'])
     expect(mockApiCall).toHaveBeenCalledWith('/users/me/profile', expect.objectContaining({ method: 'PUT' }))
   })
+
+  it('syncBadges calls POST /users/me/badges/sync with body', async () => {
+    mockApiCall.mockResolvedValueOnce({ synced: 2 })
+    const { syncBadges } = await import('../../api/profile')
+    const badges = [{ badge_id: 'first-timer', earned: true, count: 1 }, { badge_id: 'prolific', earned: false, count: null }]
+    const result = await syncBadges(badges)
+    expect(result).toEqual({ synced: 2 })
+    expect(mockApiCall).toHaveBeenCalledWith(
+      '/users/me/badges/sync',
+      expect.objectContaining({ method: 'POST', body: JSON.stringify(badges) })
+    )
+  })
+
+  it('getBadges calls GET /users/me/badges', async () => {
+    const stored = [{ badge_id: 'first-timer', earned: true, count: 1, earned_at: '2026-01-01T00:00:00Z' }]
+    mockApiCall.mockResolvedValueOnce(stored)
+    const { getBadges } = await import('../../api/profile')
+    const result = await getBadges()
+    expect(result).toEqual(stored)
+    expect(mockApiCall).toHaveBeenCalledWith('/users/me/badges')
+  })
 })

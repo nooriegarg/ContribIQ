@@ -48,3 +48,27 @@ export function getMyPRs(githubToken?: string | null, state: 'open' | 'closed' |
   if (githubToken) params.set('github_token', githubToken)
   return apiCall<UserPR[]>(`/users/me/prs?${params.toString()}`)
 }
+
+export interface BadgeSyncItem {
+  badge_id: string
+  earned: boolean
+  count?: number | null
+}
+
+export interface StoredBadge {
+  badge_id: string
+  earned: boolean
+  count: number | null
+  earned_at: string | null
+}
+
+export function syncBadges(badges: BadgeSyncItem[]): Promise<{ synced: number }> {
+  return apiCall<{ synced: number }>('/users/me/badges/sync', {
+    method: 'POST',
+    body: JSON.stringify(badges),
+  })
+}
+
+export function getBadges(): Promise<StoredBadge[]> {
+  return apiCall<StoredBadge[]>('/users/me/badges')
+}

@@ -127,15 +127,33 @@ describe('AuthProvider', () => {
     expect(stored.email).toBe('bob@example.com')
   })
 
-  it('updateUser is a no-op when user is null', () => {
+  it('updateUser persists to sessionStorage when user was stored there', () => {
+    sessionStorage.setItem('token', 'tok')
+    sessionStorage.setItem('user', JSON.stringify({ id: '1', email: 'a@b.com', name: 'Alice' }))
+
     let ctx!: ReturnType<typeof useAuth>
     renderWithAuth((c) => { ctx = c })
 
     act(() => {
-      ctx.updateUser({ name: 'Ghost' })
+      ctx.updateUser({ name: 'Session Bob' })
     })
 
-    expect(ctx.user).toBeNull()
+    const stored = JSON.parse(sessionStorage.getItem('user') ?? '{}')
+    expect(stored.name).toBe('Session Bob')
+  })
+
+  it('syncAccessToken updates token when auth:token-refreshed fires', () => {
+    localStorage.setItem('token', 'old-tok')
+
+    let ctx!: ReturnType<typeof useAuth>
+    renderWithAuth((c) => { ctx = c })
+
+    act(() => {
+      localStorage.setItem('token', 'new-tok')
+      window.dispatchEvent(new Event('auth:token-refreshed'))
+    })
+
+    expect(ctx.token).toBe('new-tok')
   })
 })
 
