@@ -1,3 +1,10 @@
+## [1.3.1](https://github.com/nooriegarg/ContribIQ/compare/v1.3.0...v1.3.1) (2026-11-26)
+
+
+### Bug Fixes
+
+* resolve ArchDiagram zoom stall and correct score_issues docs ([#212](https://github.com/nooriegarg/ContribIQ/issues/212)) ([d52fc7e](https://github.com/nooriegarg/ContribIQ/commit/d52fc7e89d7327cfcf8873faf69235870fa7521f))
+
 ## [1.1.4](https://github.com/nooriegarg/ContribIQ/compare/v1.1.3...v1.1.4) (2026-11-26)
 
 
