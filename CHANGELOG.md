@@ -1,3 +1,10 @@
+## [1.1.3](https://github.com/nooriegarg/ContribIQ/compare/v1.1.2...v1.1.3) (2026-11-26)
+
+
+### Bug Fixes
+
+* pin actions/checkout and actions/setup-node to SHAs in release.yml ([#197](https://github.com/nooriegarg/ContribIQ/issues/197)) ([f67f372](https://github.com/nooriegarg/ContribIQ/commit/f67f372b019a55734d3c22d0b6a6ddb441c1f0a9))
+
 # Changelog
 
 All notable changes to ContribIQ are documented here.
