@@ -1,3 +1,10 @@
+## [1.1.1](https://github.com/nooriegarg/ContribIQ/compare/v1.1.0...v1.1.1) (2026-11-26)
+
+
+### Bug Fixes
+
+* correct license, Docker Ollama URL, release workflow label, and dev dep pins ([#169](https://github.com/nooriegarg/ContribIQ/issues/169)) ([3683bbc](https://github.com/nooriegarg/ContribIQ/commit/3683bbcf95522848c2d3095f91456058ac90ced4))
+
 # Changelog
 
 All notable changes to ContribIQ are documented here.
