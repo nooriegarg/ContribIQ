@@ -16,7 +16,7 @@ from litellm import acompletion
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.core.config import get_settings, ai_kwargs
+from backend.core.config import get_settings
 from backend.models.issue import Issue
 from backend.services.github_client import GitHubClient
 
@@ -81,11 +81,27 @@ _CHECKLIST = [
 
 async def _llm(prompt: str) -> str:
     settings = get_settings()
-    response = await acompletion(
-        **ai_kwargs(settings),
-        messages=[{"role": "user", "content": prompt}],
-        temperature=0.2,
-    )
+    api_key = getattr(settings, 'ANTHROPIC_AUTH_TOKEN', None) or getattr(settings, 'ANTHROPIC_API_KEY', None)
+    if api_key:
+        kwargs: dict = dict(
+            model='claude-haiku-4-5',
+            api_key=api_key,
+            messages=[{"role": "user", "content": prompt}],
+            max_tokens=1024,
+            temperature=0.2,
+        )
+        base_url = getattr(settings, 'ANTHROPIC_BASE_URL', None)
+        if base_url:
+            kwargs['api_base'] = base_url
+        response = await acompletion(**kwargs)
+    else:
+        response = await acompletion(
+            model='ollama/qwen2.5-coder:7b',
+            api_base=settings.OLLAMA_URL,
+            messages=[{"role": "user", "content": prompt}],
+            max_tokens=1024,
+            temperature=0.2,
+        )
     return response.choices[0].message.content or ""
 
 

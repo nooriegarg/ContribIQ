@@ -324,6 +324,11 @@ async def get_matched_issues(
         "interests": profile.interests or [],
     }
 
+    cache_key = f"matches:{task_id}:{current_user.id}"
+    cached_matches = await get_key(cache_key)
+    if cached_matches:
+        return json.loads(cached_matches)
+
     issues_row = await db.execute(
         select(Issue).where(Issue.repo_full_name == full_name)
     )
@@ -331,18 +336,21 @@ async def get_matched_issues(
     if not issues:
         raise HTTPException(status_code=404, detail="No scored issues found. Run an analysis first.")
 
-    matches = await asyncio.gather(*[
-        match_issue(profile_dict, {
-            "id": issue.id,
-            "number": issue.number,
-            "title": issue.title,
-            "difficulty": issue.difficulty,
-            "labels": issue.labels or [],
-            "files_affected": issue.files_affected or [],
-            "estimated_hours": issue.estimated_hours,
-        })
-        for issue in issues
-    ])
+    sem = asyncio.Semaphore(4)
+
+    async def _match(issue):
+        async with sem:
+            return await match_issue(profile_dict, {
+                "id": issue.id,
+                "number": issue.number,
+                "title": issue.title,
+                "difficulty": issue.difficulty,
+                "labels": issue.labels or [],
+                "files_affected": issue.files_affected or [],
+                "estimated_hours": issue.estimated_hours,
+            })
+
+    matches = await asyncio.gather(*[_match(issue) for issue in issues])
 
     ranked = sorted(
         [{"issue_number": issue.number, "match_pct": m.match_pct, "reasons": m.reasons}
