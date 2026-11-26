@@ -10,6 +10,7 @@ Versions follow [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
+- `_resolve_github_token(user_id, body_token)` helper in `backend/api/routes/analysis.py` — probes the cached OAuth token against `GET /user` before use, evicts it from Valkey on 401, then falls back to the request-body token or `settings.GITHUB_TOKEN`; used by `start_analysis`, `start_diagram`, and `get_my_prs` to self-heal after a token is revoked without manual cache intervention
 - Issue deep-dive UI fully wired: AI explanation, files affected, impact chain, prerequisites, similar PRs, and readiness score all connected to backend endpoints
 - `GET /analysis/result/{task_id}/readiness/{issue_number}` integrated into Issue Detail page (lazy-loaded on Readiness tab)
 - `getIssueDetail()` and `getReadinessScore()` API client functions in `frontend/src/api/analyze.ts`
@@ -18,6 +19,7 @@ Versions follow [Semantic Versioning](https://semver.org/).
 - `WorkflowLayout` reset-on-taskId-change: switching repos via the sidebar now immediately clears stale result, loading, error, maxStep, and analysisReady state
 
 ### Fixed
+- Stale GitHub OAuth tokens (revoked or expired) are now automatically evicted from Valkey and replaced with the `.env` `GITHUB_TOKEN` fallback, fixing 401 errors on diagram generation and PR fetching without requiring manual `valkey-cli del` intervention
 - Profile back button on `/profile` (UserProfilePage) replaced hardcoded repo path link with `navigate(-1)` so it returns to the page that opened it
 - Profile back button on workflow step 3 (ProfilePage) also replaced with `navigate(-1)`
 - Issues page and Issue Detail tab bar now render full-width in the 2-column `.page-body` grid (`grid-column: 1 / -1`)

@@ -116,6 +116,26 @@ The core design constraint is **local-first AI**: all LLM inference runs on the 
 
 ---
 
+### ADR-09 — GitHub OAuth token probe-and-evict
+
+**Context:** GitHub OAuth tokens stored in Valkey can be revoked by the user at any time (e.g. via GitHub Settings → Applications). The original code read the cached token directly and passed it to the GitHub API, causing 401 errors on diagram generation and PR fetching that persisted for the full Valkey TTL (15 hours by default) with no self-healing path.
+
+**Decision:** Introduce `_resolve_github_token(user_id, body_token)` in `backend/api/routes/analysis.py`. Every code path that needs a GitHub token calls this helper instead of reading from Valkey directly. The helper:
+1. Reads the cached OAuth token from Valkey.
+2. Probes it with a lightweight `GET https://api.github.com/user` call (5 s timeout).
+3. If the probe returns 200, returns the token.
+4. If the probe fails (401 or network error), deletes the Valkey key and logs a warning.
+5. Falls back to `body_token` (passed by the client) or `settings.GITHUB_TOKEN` from `.env`.
+
+**Alternatives considered:**
+- **Listen for GitHub webhook token-revocation events:** Requires a public callback URL; not viable for a local developer tool.
+- **Short TTL on Valkey key:** Reduces the window but does not eliminate it; forces re-auth more often than necessary for valid tokens.
+- **Return 401 to the user and prompt re-auth:** Requires frontend handling and user action for what is an invisible background failure.
+
+**Consequence:** Every GitHub API call now pays one extra lightweight HTTP round-trip the first time a stale token is encountered. Subsequent calls within the same Valkey TTL hit the `.env` fallback directly (no stored token to probe). The probe latency is bounded to 5 seconds.
+
+---
+
 ### ADR-08 — JWT authentication with refresh tokens
 
 **Context:** The project needs stateless, scalable authentication that works with both email/password and GitHub OAuth.
@@ -146,6 +166,7 @@ Migrations are in `alembic/versions/` and must be applied with `alembic upgrade 
 
 - Suggested shell commands from the LLM are sanitised against a whitelist (`onboarding_service.py`) before being shown to the user, mitigating prompt-injection attempts that could produce harmful setup instructions.
 - GitHub OAuth CSRF state is a cryptographically random token stored server-side in Valkey; the callback handler rejects any state not found in the store.
+- GitHub OAuth tokens cached in Valkey are probed before use and evicted immediately if revoked, preventing stale tokens from reaching the GitHub API (see ADR-09).
 - Passwords are hashed with bcrypt (passlib, 12 rounds).
 - The `.env` file is in `.gitignore`; `.env.example` contains only placeholder values.
 - CodeQL analysis runs on every push via `.github/workflows/codeql.yml`.

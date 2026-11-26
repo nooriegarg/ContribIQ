@@ -32,6 +32,8 @@ def analysis_client(monkeypatch):
 
 def test_start_analysis_enqueues_repository(analysis_client, monkeypatch):
     client, routes = analysis_client
+    monkeypatch.setattr(routes, "get_key", AsyncMock(return_value=None))
+    monkeypatch.setattr(routes, "get_settings", lambda: SimpleNamespace(GITHUB_TOKEN=None))
     enqueue = AsyncMock(return_value=SimpleNamespace(task_id="test-task"))
     monkeypatch.setattr(routes.analyze_repository, "kiq", enqueue)
     response = client.post("/analysis/start", json={"owner": "psf", "repo": "requests"})
@@ -43,6 +45,8 @@ def test_start_analysis_enqueues_repository(analysis_client, monkeypatch):
 @pytest.mark.parametrize("error", [ConnectionError(), TimeoutError()])
 def test_unavailable_queue_returns_actionable_error(analysis_client, monkeypatch, error):
     client, routes = analysis_client
+    monkeypatch.setattr(routes, "get_key", AsyncMock(return_value=None))
+    monkeypatch.setattr(routes, "get_settings", lambda: SimpleNamespace(GITHUB_TOKEN=None))
     monkeypatch.setattr(routes.analyze_repository, "kiq", AsyncMock(side_effect=error))
     response = client.post("/analysis/start", json={"owner": "psf", "repo": "requests"})
     assert response.status_code == 503
