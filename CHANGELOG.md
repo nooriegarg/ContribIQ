@@ -1,3 +1,18 @@
+# [0.10.0](https://github.com/nooriegarg/ContribIQ/compare/v0.9.0...v0.10.0) (2026-11-26)
+
+
+### Bug Fixes
+
+* estimate test coverage from test-to-source file ratio ([#130](https://github.com/nooriegarg/ContribIQ/issues/130)) ([ea41b68](https://github.com/nooriegarg/ContribIQ/commit/ea41b6887e20dd6ace9b97085a36a6baff2051e7))
+* per-issue similar PRs ranking and cache matched issues to avoidre-scoring on tab revisit ([#140](https://github.com/nooriegarg/ContribIQ/issues/140)) ([3177cec](https://github.com/nooriegarg/ContribIQ/commit/3177cec74fa6383bf9f3000d062e35cde366fac6))
+* replace hardcoded back links with navigate(-1) on profile pages ([#136](https://github.com/nooriegarg/ContribIQ/issues/136)) ([9e5d02a](https://github.com/nooriegarg/ContribIQ/commit/9e5d02a85ea2782b4d374698b85189f9a82c23ec))
+
+
+### Features
+
+* generate issue-specific implementation workflow on the issue detail page ([#139](https://github.com/nooriegarg/ContribIQ/issues/139)) ([946fd0b](https://github.com/nooriegarg/ContribIQ/commit/946fd0bb768634d2c320927c664cdbf2fad87861))
+* issue deep-dive, readiness score, UI fixes, and repo-switch correctness. ([#129](https://github.com/nooriegarg/ContribIQ/issues/129)) ([e9bc246](https://github.com/nooriegarg/ContribIQ/commit/e9bc246691ed75106cc6047018ef3ad51fa61549))
+
 # Changelog
 
 All notable changes to ContribIQ are documented here.
