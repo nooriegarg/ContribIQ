@@ -36,6 +36,14 @@ services:
       valkey:
         condition: service_healthy
     env_file: .env
+    environment:
+      # Override localhost-based URLs that would resolve to the container itself.
+      # host.docker.internal reaches the Docker host on Mac and Windows.
+      # On Linux add `extra_hosts: ["host.docker.internal:host-gateway"]` or set
+      # OLLAMA_URL to your host's LAN IP.
+      OLLAMA_URL: http://host.docker.internal:11434
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     ports:
       - "8000:8000"
     volumes:
@@ -52,6 +60,10 @@ services:
       valkey:
         condition: service_healthy
     env_file: .env
+    environment:
+      OLLAMA_URL: http://host.docker.internal:11434
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     volumes:
       - ./backend:/app/backend
 
