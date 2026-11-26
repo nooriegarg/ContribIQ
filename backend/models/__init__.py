@@ -10,5 +10,6 @@ from backend.models.user import User
 from backend.models.profile import ContributorProfile
 from backend.models.repository import Repository
 from backend.models.issue import Issue
+from backend.models.badge import UserBadge
 
-__all__ = ["User", "ContributorProfile", "Repository", "Issue"]
+__all__ = ["User", "ContributorProfile", "Repository", "Issue", "UserBadge"]

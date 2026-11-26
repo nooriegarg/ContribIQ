@@ -1,14 +1,16 @@
 import asyncio
+from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy import select
+from sqlalchemy import select, delete
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.api.routes.auth import get_current_user
 from backend.db.session import get_db
+from backend.models.badge import UserBadge
 from backend.models.profile import ContributorProfile
 from backend.models.user import User
-from backend.schemas.profile import ProfileRead, ProfileUpdate
+from backend.schemas.profile import ProfileRead, ProfileUpdate, BadgeSyncItem
 from backend.services.valkey_client import get_valkey
 from backend.services.github_client import GitHubClient
 
@@ -164,3 +166,45 @@ def _summarise_checks(checks: list[dict]) -> str:
     if all(c == "success" for c in conclusions) and conclusions:
         return "success"
     return "pending"
+
+
+@router.post("/badges/sync")
+async def sync_badges(
+    body: list[BadgeSyncItem],
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Upsert the full badge state for the current user. Replaces all existing rows."""
+    await db.execute(delete(UserBadge).where(UserBadge.user_id == current_user.id))
+    now = datetime.now(timezone.utc)
+    for item in body:
+        db.add(UserBadge(
+            user_id=current_user.id,
+            badge_id=item.badge_id,
+            earned=item.earned,
+            count=item.count,
+            earned_at=now if item.earned else None,
+        ))
+    await db.commit()
+    return {"synced": len(body)}
+
+
+@router.get("/badges")
+async def get_badges(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Return the stored badge state for the current user."""
+    result = await db.execute(
+        select(UserBadge).where(UserBadge.user_id == current_user.id)
+    )
+    rows = result.scalars().all()
+    return [
+        {
+            "badge_id": r.badge_id,
+            "earned": r.earned,
+            "count": r.count,
+            "earned_at": r.earned_at.isoformat() if r.earned_at else None,
+        }
+        for r in rows
+    ]

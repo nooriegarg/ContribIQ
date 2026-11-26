@@ -21,3 +21,9 @@ class ProfileUpdate(BaseModel):
     languages: Optional[List[str]] = None
     experience: Optional[str] = None
     interests: Optional[List[str]] = None
+
+
+class BadgeSyncItem(BaseModel):
+    badge_id: str
+    earned: bool
+    count: Optional[int] = None

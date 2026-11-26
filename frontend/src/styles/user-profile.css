@@ -474,33 +474,43 @@
   position: relative;
 }
 
-.up-badge-item::after {
-  content: attr(data-tooltip);
+.up-badge-tooltip {
   position: absolute;
-  bottom: calc(100% + 8px);
+  bottom: calc(100% + 10px);
   left: 50%;
-  transform: translateX(-50%);
+  transform: translateX(-50%) translateY(4px);
   background: #1e293b;
-  color: #f8fafc;
-  font-size: 11px;
+  color: #f1f5f9;
+  font-size: 11.5px;
   font-weight: 500;
-  line-height: 1.4;
-  padding: 6px 9px;
-  border-radius: 7px;
-  white-space: nowrap;
+  line-height: 1.45;
+  padding: 7px 11px;
+  border-radius: 8px;
+  width: max-content;
   max-width: 160px;
   white-space: normal;
   text-align: center;
   pointer-events: none;
   opacity: 0;
-  transition: opacity .15s;
-  z-index: 10;
-  box-shadow: 0 4px 12px rgba(0,0,0,.18);
+  transition: opacity .18s, transform .18s;
+  z-index: 20;
+  box-shadow: 0 6px 18px rgba(0,0,0,.22);
 }
 
-.up-badge-item:hover::after,
-.up-badge-item:focus::after {
+.up-badge-tooltip::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 5px solid transparent;
+  border-top-color: #1e293b;
+}
+
+.up-badge-item:hover .up-badge-tooltip,
+.up-badge-item:focus-visible .up-badge-tooltip {
   opacity: 1;
+  transform: translateX(-50%) translateY(0);
 }
 
 .up-badge-item.earned {
@@ -607,6 +617,27 @@
   to   { opacity: 1; transform: translate(-50%, -50%) scale(1); }
 }
 
+.up-badge-modal-close {
+  position: absolute;
+  top: 10px;
+  right: 12px;
+  background: none;
+  border: none;
+  color: rgba(255,255,255,0.8);
+  font-size: 22px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: 4px;
+  transition: color .15s, background .15s;
+  z-index: 1;
+}
+
+.up-badge-modal-close:hover {
+  color: #fff;
+  background: rgba(255,255,255,0.15);
+}
+
 .up-badge-modal-banner {
   background: linear-gradient(145deg, #3b5bdb 0%, #1e3a8a 100%);
   display: flex;
@@ -711,6 +742,80 @@
   .up-main-content {
     padding: 28px 20px;
   }
+}
+
+/* Badge share buttons */
+.up-badge-share-row {
+  display: flex;
+  gap: 4px;
+  margin-top: 4px;
+  justify-content: center;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .15s;
+}
+
+.up-badge-item:hover .up-badge-share-row,
+.up-badge-share-row:hover {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.up-badge-share-btn {
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 7px;
+  border: none;
+  border-radius: 20px;
+  cursor: pointer;
+  color: #fff;
+  line-height: 1.4;
+  transition: opacity .15s;
+}
+
+.up-badge-share-btn:hover {
+  opacity: 0.85;
+}
+
+.up-badge-share-tw {
+  background: #000;
+}
+
+.up-badge-share-li {
+  background: #0a66c2;
+}
+
+/* Badge modal share buttons */
+.up-badge-modal-share-row {
+  display: flex;
+  gap: 10px;
+  margin-top: 18px;
+  justify-content: center;
+}
+
+.up-badge-modal-share-btn {
+  flex: 1;
+  max-width: 160px;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 8px 14px;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  color: #fff;
+  transition: opacity .15s;
+}
+
+.up-badge-modal-share-btn:hover {
+  opacity: 0.85;
+}
+
+.up-badge-modal-share-tw {
+  background: #000;
+}
+
+.up-badge-modal-share-li {
+  background: #0a66c2;
 }
 
 .up-sidebar-gh-link {
