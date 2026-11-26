@@ -2,7 +2,17 @@
   "branches": ["main"],
   "repositoryUrl": "https://github.com/nooriegarg/ContribIQ.git",
   "plugins": [
-    "@semantic-release/commit-analyzer",
+    ["@semantic-release/commit-analyzer", {
+      "releaseRules": [
+        { "type": "docs",     "release": false },
+        { "type": "chore",    "release": false },
+        { "type": "style",    "release": false },
+        { "type": "refactor", "release": false },
+        { "type": "test",     "release": false },
+        { "type": "fix",      "release": "patch" },
+        { "type": "feat",     "release": "minor" }
+      ]
+    }],
     "@semantic-release/release-notes-generator",
     ["@semantic-release/changelog", {
       "changelogFile": "CHANGELOG.md"

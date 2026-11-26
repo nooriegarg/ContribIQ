@@ -247,3 +247,72 @@
   color: var(--muted, #8b949e);
   text-align: right;
 }
+
+/* ── AI Generated Issues Section ───────────────────────────────────────── */
+.generated-issues-section {
+  grid-column: 1 / -1;
+  margin: 8px 0 0;
+  border: 1px solid #e0e0e0;
+  border-radius: 10px;
+  overflow: hidden;
+}
+.generated-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  background: #ffffff;
+  cursor: pointer;
+  user-select: none;
+  gap: 12px;
+  text-align: center;
+}
+.generated-header:hover { background: #f5f5f5; }
+.generated-header-left { display: flex; flex-direction: column; gap: 4px; align-items: center; width: 100%; }
+.generated-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 600;
+  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+  color: #fff;
+  width: fit-content;
+}
+.generated-title {
+  font-size: 20px;
+  font-weight: 700;
+  color: #111111;
+  margin: 0;
+}
+.generated-sub { font-size: 12px; color: #555555; margin: 0; }
+.generated-toggle { font-size: 12px; color: #555555; white-space: nowrap; align-self: flex-start; }
+.generated-list { padding: 12px 16px 16px; display: flex; flex-direction: column; gap: 12px; background: #ffffff; }
+.generated-card {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 14px 16px;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  background: #ffffff;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.generated-card-top { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.generated-difficulty { font-size: 12px; font-weight: 600; color: #555555; }
+.generated-hours { font-size: 12px; color: #555555; }
+.generated-card-title { font-size: 14px; font-weight: 600; color: #111111; margin: 0; }
+.generated-card-desc { font-size: 13px; color: #444444; margin: 0; line-height: 1.5; }
+.generated-why { font-size: 12px; color: #555555; margin: 0; }
+.generated-files { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; font-size: 12px; color: #444444; }
+.generated-file {
+  font-size: 11px;
+  background: #f0f0f0;
+  border: 1px solid #d0d0d0;
+  border-radius: 4px;
+  padding: 1px 6px;
+  color: #222222;
+}

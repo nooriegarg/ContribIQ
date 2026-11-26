@@ -183,3 +183,19 @@ export interface ReadinessResult {
 export async function getReadinessScore(taskId: string, issueNumber: number): Promise<ReadinessResult> {
   return apiCall<ReadinessResult>(`/analysis/result/${taskId}/readiness/${issueNumber}`)
 }
+
+export interface GeneratedIssue {
+  title: string
+  description: string
+  files_affected: string[]
+  skills: string[]
+  difficulty: number
+  estimated_hours: number
+  why_beginner_friendly: string
+  gap_kind: 'todo' | 'untested' | 'missing_docstring'
+  source: 'ai_generated'
+}
+
+export async function getGeneratedIssues(taskId: string): Promise<GeneratedIssue[]> {
+  return apiCall<GeneratedIssue[]>(`/analysis/result/${taskId}/generated-issues`)
+}
