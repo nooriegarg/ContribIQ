@@ -2,16 +2,16 @@
 # All packages are Apache 2.0, MIT, or BSD licensed
 
 # Web framework
-fastapi==0.162.0
-uvicorn[standard]==0.30.6
+fastapi==0.165.0
+uvicorn[standard]==0.54.0
 python-multipart==0.0.12
 
 # Configuration
-pydantic-settings==2.16.1
+pydantic-settings==2.16.3
 email-validator==2.3.0
 
 # Database (async SQLAlchemy + PostgreSQL + migrations)
-sqlalchemy[asyncio]==2.0.35
+sqlalchemy[asyncio]==2.1.9
 asyncpg==0.32.0
 alembic==1.20.1
 
@@ -19,7 +19,7 @@ alembic==1.20.1
 pgvector==0.5.1
 
 # Authentication
-passlib[bcrypt]==1.7.4
+passlib[bcrypt]==1.9.5
 bcrypt==4.0.1
 python-jose[cryptography]==3.5.0
 
@@ -37,7 +37,7 @@ taskiq-redis==1.2.4
 
 # Code analysis for issue difficulty scoring
 radon==6.0.1
-tree-sitter==0.23.2
+tree-sitter==0.27.0
 tree-sitter-python==0.23.6
 
 # LLM provider (unified interface — Ollama / Anthropic / OpenAI switchable via env)
