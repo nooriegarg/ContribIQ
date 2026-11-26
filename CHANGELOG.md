@@ -1,3 +1,10 @@
+# [1.3.0](https://github.com/nooriegarg/ContribIQ/compare/v1.2.0...v1.3.0) (2026-11-26)
+
+
+### Features
+
+* add "Open on GitHub" button to generated good first issues ([#210](https://github.com/nooriegarg/ContribIQ/issues/210)) ([52294bd](https://github.com/nooriegarg/ContribIQ/commit/52294bd1a91c74e03a9a0f737ed744e5d4d3f430))
+
 ## [1.1.4](https://github.com/nooriegarg/ContribIQ/compare/v1.1.3...v1.1.4) (2026-11-26)
 
 
