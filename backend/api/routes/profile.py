@@ -7,6 +7,7 @@ from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.api.routes.auth import get_current_user
+from backend.api.routes.analysis import _resolve_github_token
 from backend.db.session import get_db
 from backend.models.badge import UserBadge
 from backend.models.profile import ContributorProfile
@@ -94,11 +95,7 @@ async def get_my_prs(
     if not username:
         return []
 
-    # Fall back to the token stored at OAuth time if the client didn't pass one
-    effective_token = github_token
-    if not effective_token:
-        stored = await get_key(f"gh-token:{current_user.id}")
-        effective_token = stored or None
+    effective_token = await _resolve_github_token(current_user.id, github_token)
 
     allowed_states = {"open", "closed", "all"}
     pr_state = state if state in allowed_states else "open"

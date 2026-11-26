@@ -2,6 +2,7 @@ import asyncio
 import json
 import logging
 
+import httpx
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
@@ -25,6 +26,27 @@ from backend.worker.tasks.generate_diagram import generate_diagram
 
 logger = logging.getLogger(__name__)
 
+
+async def _resolve_github_token(user_id: str, body_token: str | None = None) -> str | None:
+    """Return the best available GitHub token, evicting stale OAuth tokens."""
+    settings = get_settings()
+    oauth_key = f"gh-token:{user_id}"
+    oauth_token = await get_key(oauth_key)
+    if oauth_token:
+        try:
+            async with httpx.AsyncClient(timeout=5.0) as http:
+                r = await http.get(
+                    "https://api.github.com/user",
+                    headers={"Authorization": f"Bearer {oauth_token}"},
+                )
+            if r.status_code == 200:
+                return oauth_token
+        except Exception:
+            pass
+        await delete_key(oauth_key)
+        logger.warning("Evicted stale GitHub OAuth token for user %s", user_id)
+    return body_token or settings.GITHUB_TOKEN
+
 router = APIRouter(prefix="/analysis", tags=["analysis"])
 
 
@@ -45,12 +67,13 @@ async def start_analysis(
     body: AnalysisRequest,
     current_user: User = Depends(get_current_user),
 ):
+    github_token = await _resolve_github_token(current_user.id, body.github_token)
     try:
         task = await asyncio.wait_for(
             analyze_repository.kiq(
                 owner=body.owner,
                 repo_name=body.repo,
-                github_token=body.github_token,
+                github_token=github_token,
             ),
             timeout=10,
         )
@@ -159,8 +182,7 @@ async def start_diagram(
             pass
         await delete_key(cache_key)
 
-    settings = get_settings()
-    github_token = await get_key(f"gh-token:{current_user.id}") or settings.GITHUB_TOKEN
+    github_token = await _resolve_github_token(current_user.id)
     task = await generate_diagram.kiq(
         owner=data["owner"],
         repo_name=data["repo"],
