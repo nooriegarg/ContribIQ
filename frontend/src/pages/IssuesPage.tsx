@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { getMatchedIssues, type IssueMatch } from '../api/analyze'
 import { useWorkflow } from '../hooks/useWorkflow'
+import { useAuth } from '../context/useAuth'
 import { getIssueLoadError, getOpenIssues } from '../utils/issues'
 import WorkflowHeader from '../components/WorkflowHeader'
 import WorkflowIcon from '../components/WorkflowIcon'
@@ -26,23 +27,31 @@ function MatchRing({ pct }: { pct: number }) {
 
 export default function IssuesPage() {
   const { taskId, basePath, result } = useWorkflow()
+  const { user } = useAuth()
   const [query, setQuery] = useState('')
   const [label, setLabel] = useState('')
-  const [matches, setMatches] = useState<IssueMatch[] | null>(null)
+  const matchCacheKey = `matches:${taskId}:${user?.id ?? 'anon'}`
+  const [matches, setMatches] = useState<IssueMatch[] | null>(() => {
+    try { const c = sessionStorage.getItem(matchCacheKey); return c ? JSON.parse(c) : null } catch { return null }
+  })
   const [matchError, setMatchError] = useState('')
-  const [matchLoading, setMatchLoading] = useState(true)
+  const [matchLoading, setMatchLoading] = useState(matches === null)
 
   useEffect(() => {
-    if (!taskId) return
+    if (!taskId || matches !== null) return
     let active = true
     setMatchLoading(true)
     setMatchError('')
     getMatchedIssues(taskId)
-      .then(data => { if (active) setMatches(data) })
+      .then(data => {
+        if (!active) return
+        setMatches(data)
+        try { sessionStorage.setItem(matchCacheKey, JSON.stringify(data)) } catch { /* storage full */ }
+      })
       .catch(err => { if (active) setMatchError(err instanceof Error ? err.message : 'Unable to load ranked issues.') })
       .finally(() => { if (active) setMatchLoading(false) })
     return () => { active = false }
-  }, [taskId])
+  }, [taskId, matchCacheKey, matches])
 
   if (!result) return null
 

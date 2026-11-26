@@ -81,7 +81,48 @@ async def test_find_similar_prs_shape():
     assert result[0]["url"] == "https://github.com/pr/1"
 
 
-# --- _generate_impact_chain ---
+@pytest.mark.asyncio
+async def test_find_similar_prs_ranks_by_keyword_overlap():
+    prs = [
+        {"number": 1, "title": "Fix unrelated deploy script", "html_url": "u/1", "merged_at": "2024-01-01"},
+        {"number": 2, "title": "Fix authentication token expiry bug", "html_url": "u/2", "merged_at": "2024-01-02"},
+        {"number": 3, "title": "Update README", "html_url": "u/3", "merged_at": "2024-01-03"},
+    ]
+
+    mock_client = AsyncMock()
+    mock_client.get_pull_requests = AsyncMock(return_value=prs)
+    mock_ctx = AsyncMock()
+    mock_ctx.__aenter__ = AsyncMock(return_value=mock_client)
+    mock_ctx.__aexit__ = AsyncMock(return_value=None)
+
+    with patch("backend.services.issue_detail_service.GitHubClient", return_value=mock_ctx):
+        result = await find_similar_prs("owner", "repo", "authentication bug in token", ["authentication", "bug"])
+
+    # PR #2 shares "authentication", "bug", "token" with the issue — should come first
+    assert result[0]["number"] == 2
+
+
+@pytest.mark.asyncio
+async def test_find_similar_prs_different_issues_return_different_prs():
+    prs = [
+        {"number": 1, "title": "Fix authentication login flow", "html_url": "u/1", "merged_at": "2024-01-01"},
+        {"number": 2, "title": "Improve UI styling and CSS layout", "html_url": "u/2", "merged_at": "2024-01-02"},
+        {"number": 3, "title": "Fix database query performance", "html_url": "u/3", "merged_at": "2024-01-03"},
+    ]
+
+    mock_client = AsyncMock()
+    mock_client.get_pull_requests = AsyncMock(return_value=prs)
+    mock_ctx = AsyncMock()
+    mock_ctx.__aenter__ = AsyncMock(return_value=mock_client)
+    mock_ctx.__aexit__ = AsyncMock(return_value=None)
+
+    with patch("backend.services.issue_detail_service.GitHubClient", return_value=mock_ctx):
+        result_auth = await find_similar_prs("owner", "repo", "authentication login issue", ["authentication"])
+        mock_client.get_pull_requests = AsyncMock(return_value=prs)
+        result_db = await find_similar_prs("owner", "repo", "slow database query", ["database", "performance"])
+
+    assert result_auth[0]["number"] == 1
+    assert result_db[0]["number"] == 3
 
 @pytest.mark.asyncio
 async def test_generate_impact_chain_parses_valid_json():

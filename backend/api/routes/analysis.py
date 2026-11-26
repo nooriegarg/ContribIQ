@@ -302,6 +302,15 @@ async def get_matched_issues(
     analysis_data = result.return_value or {}
     full_name = f"{analysis_data.get('owner', '')}/{analysis_data.get('repo', '')}"
 
+    # Return cached matches if available (avoids re-running LLM on every tab visit)
+    cache_key = f"matches:{task_id}:{current_user.id}"
+    cached_raw = await get_key(cache_key)
+    if cached_raw:
+        try:
+            return json.loads(cached_raw)
+        except Exception:
+            pass
+
     profile_row = await db.execute(
         select(ContributorProfile).where(ContributorProfile.user_id == current_user.id)
     )
@@ -341,4 +350,8 @@ async def get_matched_issues(
         key=lambda x: x["match_pct"],
         reverse=True,
     )
+
+    # Cache for 24 hours — same TTL as the analysis result
+    await set_key(cache_key, json.dumps(ranked), ttl=86400)
+
     return ranked
