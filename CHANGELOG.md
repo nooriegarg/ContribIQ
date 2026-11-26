@@ -1,3 +1,10 @@
+## [0.10.1](https://github.com/nooriegarg/ContribIQ/compare/v0.10.0...v0.10.1) (2026-11-26)
+
+
+### Performance Improvements
+
+* use Claude Haiku for LLM services and cache issue matches ([#141](https://github.com/nooriegarg/ContribIQ/issues/141)) ([cbfc642](https://github.com/nooriegarg/ContribIQ/commit/cbfc642fc7f4dafeb03bb59fc1dad17c25441009))
+
 # Changelog
 
 All notable changes to ContribIQ are documented here.
