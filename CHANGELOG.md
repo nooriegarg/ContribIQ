@@ -1,3 +1,11 @@
+# [1.1.0](https://github.com/nooriegarg/ContribIQ/compare/v1.0.2...v1.1.0) (2026-11-26)
+
+
+### Features
+
+* add GitHub OAuth, PR tracking, badges, and profile UI overhaul ([#145](https://github.com/nooriegarg/ContribIQ/issues/145)) ([77537b9](https://github.com/nooriegarg/ContribIQ/commit/77537b9871b3262560f02e96d33d4660d4a5ae02))
+* persist contributor badges and add social sharing on the profile page ([#146](https://github.com/nooriegarg/ContribIQ/issues/146)) ([4ee0891](https://github.com/nooriegarg/ContribIQ/commit/4ee08910e09cc0c93506dfe021f0a8d6401d99a6))
+
 # Changelog
 
 All notable changes to ContribIQ are documented here.
