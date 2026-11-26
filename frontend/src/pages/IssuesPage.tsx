@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { getMatchedIssues, type IssueMatch } from '../api/analyze'
+import { getMatchedIssues, getGeneratedIssues, type IssueMatch, type GeneratedIssue } from '../api/analyze'
 import { useWorkflow } from '../hooks/useWorkflow'
 import { useAuth } from '../context/useAuth'
 import { getIssueLoadError, getOpenIssues } from '../utils/issues'
@@ -37,6 +37,10 @@ export default function IssuesPage() {
   const [matchError, setMatchError] = useState('')
   const [matchLoading, setMatchLoading] = useState(matches === null)
 
+  const [generatedIssues, setGeneratedIssues] = useState<GeneratedIssue[]>([])
+  const [generatedLoading, setGeneratedLoading] = useState(true)
+  const [showGenerated, setShowGenerated] = useState(false)
+
   useEffect(() => {
     if (!taskId || matches !== null) return
     let active = true
@@ -52,6 +56,16 @@ export default function IssuesPage() {
       .finally(() => { if (active) setMatchLoading(false) })
     return () => { active = false }
   }, [taskId, matchCacheKey, matches])
+
+  useEffect(() => {
+    if (!taskId) return
+    let active = true
+    getGeneratedIssues(taskId)
+      .then(data => { if (active) setGeneratedIssues(data) })
+      .catch(() => {})
+      .finally(() => { if (active) setGeneratedLoading(false) })
+    return () => { active = false }
+  }, [taskId])
 
   if (!result) return null
 
@@ -124,8 +138,48 @@ export default function IssuesPage() {
             {filtered.length === 0 && <div className="card issue-empty"><h2 className="ctitle">{issues.length === 0 ? 'No open issues in this analysis' : 'No issues match your filters'}</h2><p className="muted">{issues.length === 0 ? 'Try another repository, or check GitHub for newer issues.' : 'Try a different search or select All labels.'}</p>{(query || label) && <button className="btn btn-s mt12" onClick={() => { setQuery(''); setLabel('') }}>Clear filters</button>}</div>}
           </>
         )}
+
+        {/* AI-Generated Issue Suggestions */}
+        {!generatedLoading && generatedIssues.length > 0 && (
+          <div className="generated-issues-section">
+            <div className="generated-header" onClick={() => setShowGenerated(o => !o)} role="button" tabIndex={0} onKeyDown={e => e.key === 'Enter' && setShowGenerated(o => !o)}>
+              <div className="generated-header-left">
+                <span className="generated-badge">AI Generated</span>
+                <h3 className="generated-title">Suggested Issues from Codebase Analysis</h3>
+                <p className="generated-sub">{generatedIssues.length} beginner-friendly opportunities found by scanning the source code</p>
+              </div>
+              <span className="generated-toggle">{showGenerated ? '▲ Hide' : '▼ Show'}</span>
+            </div>
+            {showGenerated && (
+              <div className="generated-list">
+                {generatedIssues.map((issue, i) => (
+                  <div className="generated-card" key={i}>
+                    <div className="generated-card-top">
+                      <span className={`badge ${issue.gap_kind === 'untested' ? 'badge-yellow' : issue.gap_kind === 'missing_docstring' ? 'badge-blue' : 'badge-gray'}`}>
+                        {issue.gap_kind === 'todo' ? 'TODO/FIXME' : issue.gap_kind === 'untested' ? 'Missing Tests' : 'Missing Docs'}
+                      </span>
+                      <span className="generated-difficulty">Difficulty {issue.difficulty.toFixed(1)}/5</span>
+                      <span className="muted generated-hours">~{issue.estimated_hours}h</span>
+                    </div>
+                    <h4 className="generated-card-title">{issue.title}</h4>
+                    <p className="generated-card-desc">{issue.description}</p>
+                    <p className="generated-why"><strong>Why beginner-friendly:</strong> {issue.why_beginner_friendly}</p>
+                    {issue.files_affected.length > 0 && (
+                      <div className="generated-files">
+                        <span className="muted">Files: </span>
+                        {issue.files_affected.map(f => <code key={f} className="generated-file">{f}</code>)}
+                      </div>
+                    )}
+                    {issue.skills.length > 0 && (
+                      <div className="issue-tags">{issue.skills.map(s => <span className="badge badge-blue" key={s}>{s}</span>)}</div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
       </div>
-      <footer className="action-row"><p className="ar-hint">Select an issue to explore its details and plan your contribution.</p><Link className="btn btn-s" to={`${basePath}/profile`}>Back to Profile</Link></footer>
-    </section>
+      <footer className="action-row"><p className="ar-hint">Select an issue to explore its details and plan your contribution.</p><Link className="btn btn-s" to={`${basePath}/profile`}>Back to Profile</Link></footer>    </section>
   )
 }

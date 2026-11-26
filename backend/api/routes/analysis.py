@@ -304,6 +304,39 @@ def _sse(event: str, data: dict) -> str:
     return f"event: {event}\ndata: {json.dumps(data)}\n\n"
 
 
+@router.get("/result/{task_id}/generated-issues")
+async def get_generated_issues(
+    task_id: str,
+    current_user: User = Depends(get_current_user),
+):
+    try:
+        result = await _get_task_result(task_id)
+    except Exception:
+        raise HTTPException(status_code=404, detail="Analysis task not found")
+
+    if result is None:
+        raise HTTPException(status_code=202, detail="Analysis still in progress")
+
+    if result.is_err or (result.return_value or {}).get("status") != "completed":
+        raise HTTPException(status_code=500, detail="Analysis task failed")
+
+    data = result.return_value or {}
+    owner = data.get("owner", "")
+    repo = data.get("repo", "")
+    if not owner or not repo:
+        raise HTTPException(status_code=400, detail="Repository identity missing from analysis result")
+
+    cache_key = f"generated_issues:{owner}/{repo}"
+    cached = await get_key(cache_key)
+    if cached:
+        try:
+            return json.loads(cached)
+        except Exception:
+            pass
+
+    return []
+
+
 @router.get("/result/{task_id}/matches")
 async def get_matched_issues(
     task_id: str,
