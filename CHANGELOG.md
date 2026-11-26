@@ -1,3 +1,10 @@
+## [1.1.5](https://github.com/nooriegarg/ContribIQ/compare/v1.1.4...v1.1.5) (2026-11-26)
+
+
+### Bug Fixes
+
+* pin codeql-action/upload-sarif to commit SHA in scorecard.yml ([#204](https://github.com/nooriegarg/ContribIQ/issues/204)) ([95b3fac](https://github.com/nooriegarg/ContribIQ/commit/95b3facbc1cd774b09edb0fb0f2010c5d495c9b8))
+
 ## [1.1.4](https://github.com/nooriegarg/ContribIQ/compare/v1.1.3...v1.1.4) (2026-11-26)
 
 
