@@ -1,3 +1,10 @@
+## [1.1.2](https://github.com/nooriegarg/ContribIQ/compare/v1.1.1...v1.1.2) (2026-11-26)
+
+
+### Bug Fixes
+
+* add explicit token permissions to all GitHub Actions workflows ([#176](https://github.com/nooriegarg/ContribIQ/issues/176)) ([9bdfb93](https://github.com/nooriegarg/ContribIQ/commit/9bdfb932f781c34426224e61f6d80e5e8fa38f62))
+
 # Changelog
 
 All notable changes to ContribIQ are documented here.
