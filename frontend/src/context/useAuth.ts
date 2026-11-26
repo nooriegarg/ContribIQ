@@ -4,6 +4,7 @@ export interface User {
   id: string
   email: string
   name: string
+  github_username: string | null
 }
 
 interface AuthContextValue {

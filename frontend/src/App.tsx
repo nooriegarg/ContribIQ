@@ -10,6 +10,7 @@ import OverviewPage from './pages/OverviewPage'
 import WorkflowLayout from './components/WorkflowLayout'
 import IssuesPage from './pages/IssuesPage'
 import IssueDetailPage from './pages/IssueDetailPage'
+import RepoPRsPage from './pages/RepoPRsPage'
 
 export default function App() {
   return (
@@ -27,6 +28,7 @@ export default function App() {
         <Route path="profile" element={<ProfilePage />} />
         <Route path="issues" element={<IssuesPage />} />
         <Route path="issues/:issueNumber" element={<IssueDetailPage />} />
+        <Route path="prs" element={<RepoPRsPage />} />
       </Route>
       <Route path="/" element={<Navigate to="/login" replace />} />
     </Routes>

@@ -12,6 +12,27 @@ export interface ContributorProfile {
 
 export type ProfileUpdate = Partial<Pick<ContributorProfile, 'languages' | 'experience' | 'interests'>>
 
+export interface PRCheck {
+  name: string
+  status: string
+  conclusion: string | null
+  url: string | null
+}
+
+export interface UserPR {
+  number: number
+  title: string
+  url: string | null
+  repo: string
+  state: string
+  merged_at: string | null
+  draft: boolean
+  created_at: string | null
+  updated_at: string | null
+  ci_status: 'success' | 'failure' | 'running' | 'pending'
+  checks: PRCheck[]
+}
+
 export function getProfile(): Promise<ContributorProfile> {
   return apiCall<ContributorProfile>('/users/me/profile')
 }
@@ -21,4 +42,9 @@ export function updateProfile(payload: ProfileUpdate): Promise<ContributorProfil
     method: 'PUT',
     body: JSON.stringify(payload),
   })
+}
+
+export function getMyPRs(githubToken?: string | null, state: 'open' | 'closed' | 'all' = 'open'): Promise<UserPR[]> {  const params = new URLSearchParams({ state })
+  if (githubToken) params.set('github_token', githubToken)
+  return apiCall<UserPR[]>(`/users/me/prs?${params.toString()}`)
 }

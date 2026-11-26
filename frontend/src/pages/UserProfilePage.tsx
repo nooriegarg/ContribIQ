@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
-import { Link, Navigate, useNavigate } from 'react-router-dom'
-import { updateCurrentUser } from '../api/auth'
-import { getProfile, updateProfile, type ContributorProfile } from '../api/profile'
+import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom'
+import { getGitHubLinkUrl, updateCurrentUser } from '../api/auth'
+import { getProfile, getMyPRs, updateProfile, type ContributorProfile, type UserPR } from '../api/profile'
 import Avatar from '../components/Avatar'
 import ChipSelector from '../components/ChipSelector'
 import ExperienceSelector from '../components/ExperienceSelector'
@@ -14,9 +14,113 @@ import '../styles/components.css'
 import '../styles/globals.css'
 import '../styles/user-profile.css'
 
+interface PRBadgeDef {
+  id: string
+  emoji: string
+  label: string
+  desc: string
+  earned: boolean
+  count?: number
+}
+
+const BADGE_BASE = 'https://github.com/nooriegarg/ContribIQ/releases/download/v0.1-assets'
+
+const BADGE_IMAGES: Record<string, string> = {
+  first_merge:       `${BADGE_BASE}/first_pr.png`,
+  merged_10:         `${BADGE_BASE}/10_merged.png`,
+  merged_50:         `${BADGE_BASE}/50_merged.png`,
+  merged_100:        `${BADGE_BASE}/100_merged.png`,
+  prolific:          `${BADGE_BASE}/prolific.png`,
+  quick_ship:        `${BADGE_BASE}/quick_ship.png`,
+  same_day:          `${BADGE_BASE}/same_day.png`,
+  hotfix_hero:       `${BADGE_BASE}/hotfix_hero.png`,
+  green_light:       `${BADGE_BASE}/green_light.png`,
+  clean_streak:      `${BADGE_BASE}/clean_streak.png`,
+  no_flakes:         `${BADGE_BASE}/no_flakes.png`,
+  multi_repo:        `${BADGE_BASE}/multi_repo_contributor.png`,
+  first_time:        `${BADGE_BASE}/first_time_contributor.png`,
+  comeback:          `${BADGE_BASE}/comeback.png`,
+  issue_hunter:      `${BADGE_BASE}/issue_hunter.png`,
+  recommended_merge: `${BADGE_BASE}/recommended_merge.png`,
+}
+
+function BadgeIcon({ id, size = 24, label = '' }: { id: string; size?: number; label?: string }) {
+  const src = BADGE_IMAGES[id]
+  if (!src) return <span style={{ fontSize: size * 0.7, lineHeight: 1 }}>🏆</span>
+  return <img src={src} alt={label} width={size} height={size} style={{ objectFit: 'contain', display: 'block' }} />
+}
+
+function computeBadges(merged: UserPR[]): PRBadgeDef[] {
+  const n = merged.length
+
+  // counts
+  const repoCounts: Record<string, number> = {}
+  for (const pr of merged) repoCounts[pr.repo] = (repoCounts[pr.repo] ?? 0) + 1
+  const repoCount = Object.keys(repoCounts).length
+  const prolific = Object.values(repoCounts).some(c => c >= 5)
+  const greenCount = merged.filter(pr => pr.ci_status === 'success').length
+
+  // speed
+  const quickShip = merged.some(pr => {
+    if (!pr.created_at || !pr.merged_at) return false
+    return (new Date(pr.merged_at).getTime() - new Date(pr.created_at).getTime()) / 3_600_000 <= 24
+  })
+  const sameDay = merged.some(pr => {
+    if (!pr.created_at || !pr.merged_at) return false
+    return new Date(pr.created_at).toDateString() === new Date(pr.merged_at).toDateString()
+  })
+  const hotfixHero = merged.some(pr => {
+    if (!pr.created_at || !pr.merged_at) return false
+    return (new Date(pr.merged_at).getTime() - new Date(pr.created_at).getTime()) / 3_600_000 <= 1
+  })
+
+  // CI streak: 5 consecutive no-failure merges (sorted by merged_at)
+  const sorted = [...merged].filter(pr => pr.merged_at).sort((a, b) =>
+    new Date(a.merged_at!).getTime() - new Date(b.merged_at!).getTime()
+  )
+  let streak = 0, maxStreak = 0
+  for (const pr of sorted) {
+    if (pr.ci_status !== 'failure') { streak++; maxStreak = Math.max(maxStreak, streak) }
+    else streak = 0
+  }
+  const cleanStreak = maxStreak >= 5
+  const noFlakes = merged.length > 0 && merged.every(pr => pr.ci_status !== 'failure')
+
+  // dates for comeback: gap of 30+ days between consecutive merged PRs
+  const mergedDates = sorted.map(pr => new Date(pr.merged_at!).getTime())
+  const comeback = mergedDates.some((t, i) =>
+    i > 0 && (t - mergedDates[i - 1]) / 86_400_000 >= 30
+  )
+
+  return [
+    // Activity volume
+    { id: 'first_merge',  emoji: '🎉', label: 'First Merge',    desc: 'First PR merged anywhere.',              earned: n >= 1 },
+    { id: 'merged_10',    emoji: '🔟', label: '10 Merged',      desc: '10 PRs merged.',                         earned: n >= 10,  count: n >= 10 ? Math.floor(n / 10) : undefined },
+    { id: 'merged_50',    emoji: '🏅', label: '50 Merged',      desc: '50 PRs merged.',                         earned: n >= 50 },
+    { id: 'merged_100',   emoji: '💯', label: '100 Merged',     desc: '100 PRs merged.',                        earned: n >= 100 },
+    { id: 'prolific',     emoji: '📈', label: 'Prolific',       desc: '5+ PRs merged in a single repository.',  earned: prolific },
+    // Speed
+    { id: 'quick_ship',   emoji: '⚡', label: 'Quick Ship',     desc: 'PR merged within 24 hours of opening.',  earned: quickShip },
+    { id: 'same_day',     emoji: '📅', label: 'Same Day',       desc: 'PR opened and merged on the same calendar day.', earned: sameDay },
+    { id: 'hotfix_hero',  emoji: '🚨', label: 'Hotfix Hero',    desc: 'PR merged within 1 hour of opening.',    earned: hotfixHero },
+    // CI quality
+    { id: 'green_light',  emoji: '🟢', label: 'Green Light',   desc: '10 PRs merged with all checks passing.', earned: greenCount >= 10, count: greenCount >= 10 ? Math.floor(greenCount / 10) : undefined },
+    { id: 'clean_streak', emoji: '🔥', label: 'Clean Streak',  desc: '5 consecutive PRs merged with no CI failures.', earned: cleanStreak },
+    { id: 'no_flakes',    emoji: '❄️', label: 'No Flakes',     desc: 'Never had a failing check on a merged PR.', earned: noFlakes },
+    // Depth
+    { id: 'multi_repo',   emoji: '🗂️', label: 'Multi-Repo',    desc: 'Merged PRs into 3+ different repositories.', earned: repoCount >= 3 },
+    { id: 'first_time',   emoji: '🌟', label: 'First-Timer',   desc: 'Merged a first PR into a repo you hadn\'t contributed to before.', earned: repoCount >= 1 },
+    { id: 'comeback',     emoji: '🔁', label: 'Comeback',      desc: 'Merged a PR after 30+ days of inactivity.', earned: comeback },
+    // ContribIQ
+    { id: 'issue_hunter', emoji: '🔍', label: 'Issue Hunter',  desc: 'Completed the full ContribIQ workflow end-to-end.', earned: false },
+    { id: 'recommended_merge', emoji: '✅', label: 'Recommended', desc: 'Merged a PR on an issue ContribIQ recommended.', earned: false },
+  ]
+}
+
 export default function UserProfilePage() {
   const { token, user, logout, updateUser } = useAuth()
   const navigate = useNavigate()
+  const [activeTab, setActiveTab] = useState<'profile'>('profile')
   const [profile, setProfile] = useState<ContributorProfile | null>(null)
   const [languagesSelected, setLanguagesSelected] = useState<string[]>([])
   const [interestsSelected, setInterestsSelected] = useState<string[]>([])
@@ -29,7 +133,11 @@ export default function UserProfilePage() {
   const [saved, setSaved] = useState(false)
   const [attempt, setAttempt] = useState(0)
   const [avatarUrl, setAvatarUrl] = useState<string | null>(() => user ? getAvatarUrl(user.id) : null)
+  const [badges, setBadges] = useState<PRBadgeDef[]>([])
+  const [prsLoading, setPrsLoading] = useState(false)
+  const [selectedBadge, setSelectedBadge] = useState<PRBadgeDef | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const location = useLocation()
 
   useEffect(() => {
     let active = true
@@ -47,6 +155,23 @@ export default function UserProfilePage() {
       .finally(() => { if (active) setLoading(false) })
     return () => { active = false }
   }, [attempt])
+
+  useEffect(() => {
+    if (!user?.github_username) return
+    let active = true
+    setPrsLoading(true)
+    const githubToken = localStorage.getItem('github_token')
+    getMyPRs(githubToken, 'all')
+      .then(data => {
+        if (!active) return
+        const merged = data.filter(pr => pr.merged_at !== null)
+        console.log('[badges] total PRs:', data.length, 'merged:', merged.length, merged.map(p => p.repo + '#' + p.number))
+        setBadges(computeBadges(merged))
+      })
+      .catch(() => {})
+      .finally(() => { if (active) setPrsLoading(false) })
+    return () => { active = false }
+  }, [user?.github_username])
 
   if (!token) return <Navigate to="/login" replace />
 
@@ -95,11 +220,13 @@ export default function UserProfilePage() {
       </header>
 
       <main className="up-main">
-        <div className="up-card">
-          <div className="up-card-header">
-            <div className="up-avatar-row">
+        <div className="up-card up-card-layout">
+
+          {/* Left sidebar */}
+          <aside className="up-sidebar">
+            <div className="up-sidebar-avatar">
               <div className="up-avatar-wrap">
-                <Avatar name={user?.name ?? ''} avatarUrl={avatarUrl} size={72} />
+                <Avatar name={user?.name ?? ''} avatarUrl={avatarUrl} size={80} />
                 <button
                   className="up-avatar-edit"
                   type="button"
@@ -118,99 +245,226 @@ export default function UserProfilePage() {
                   onChange={handleAvatarChange}
                 />
               </div>
+              <h1 className="up-sidebar-name">{user?.name}</h1>
+              {user?.github_username && (
+                <p className="up-sidebar-username">@{user.github_username}</p>
+              )}
+            </div>
+
+            {prsLoading ? (
+              <div className="up-sidebar-section">
+                <h2 className="up-sidebar-section-title">Achievements</h2>
+                <p className="up-sidebar-empty">Loading badges…</p>
+              </div>
+            ) : !user?.github_username ? (
+              <div className="up-sidebar-section">
+                <h2 className="up-sidebar-section-title">Achievements</h2>
+                <p className="up-sidebar-empty">GitHub not connected</p>
+                <a className="up-sidebar-gh-link" href={getGitHubLinkUrl(location.pathname)}>Connect GitHub</a>
+              </div>
+            ) : badges.length === 0 ? (
+              <div className="up-sidebar-section">
+                <h2 className="up-sidebar-section-title">Achievements</h2>
+                <p className="up-sidebar-empty">Connect GitHub to earn badges</p>
+              </div>
+            ) : (
+              <>
+                {/* Earned badges */}
+                {badges.filter(b => b.earned).length > 0 && (
+                  <div className="up-sidebar-section">
+                    <h2 className="up-sidebar-section-title">Achievements</h2>
+                    <div className="up-badges-grid">
+                      {badges.filter(b => b.earned).map(b => (
+                        <div
+                          key={b.id}
+                          className={`up-badge-item earned${selectedBadge?.id === b.id ? ' selected' : ''}`}
+                          onMouseEnter={() => setSelectedBadge(b)}
+                          onMouseLeave={() => setSelectedBadge(null)}
+                          onFocus={() => setSelectedBadge(b)}
+                          onBlur={() => setSelectedBadge(null)}
+                          tabIndex={0}
+                          aria-label={`${b.label}: ${b.desc}`}
+                          data-tooltip={b.desc}
+                        >
+                          <div className="up-badge-icon">
+                            <BadgeIcon id={b.id} size={24} label={b.label} />
+                            {b.count && b.count > 1 && (
+                              <span className="up-badge-count">×{b.count}</span>
+                            )}
+                          </div>
+                          <span className="up-badge-label">{b.label}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Locked badges */}
+                {badges.filter(b => !b.earned).length > 0 && (
+                  <div className="up-sidebar-section">
+                    <h2 className="up-sidebar-section-title">Locked</h2>
+                    <div className="up-badges-grid">
+                      {badges.filter(b => !b.earned).map(b => (
+                        <div
+                          key={b.id}
+                          className={`up-badge-item${selectedBadge?.id === b.id ? ' selected' : ''}`}
+                          onMouseEnter={() => setSelectedBadge(b)}
+                          onMouseLeave={() => setSelectedBadge(null)}
+                          onFocus={() => setSelectedBadge(b)}
+                          onBlur={() => setSelectedBadge(null)}
+                          tabIndex={0}
+                          aria-label={`${b.label}: ${b.desc} (not yet earned)`}
+                          data-tooltip={`${b.desc} (not yet earned)`}
+                        >
+                          <div className="up-badge-icon">
+                            <BadgeIcon id={b.id} size={24} label={b.label} />
+                          </div>
+                          <span className="up-badge-label">{b.label}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Hover modal shared across both sections */}
+                {selectedBadge && (
+                  <>
+                    <div className="up-badge-modal-backdrop" />
+                    <div
+                      className="up-badge-modal"
+                      role="dialog"
+                      aria-modal="true"
+                      aria-label={selectedBadge.label}
+                      onMouseEnter={() => setSelectedBadge(selectedBadge)}
+                      onMouseLeave={() => setSelectedBadge(null)}
+                    >
+                      <div className="up-badge-modal-banner">
+                        <BadgeIcon id={selectedBadge.id} size={80} label={selectedBadge.label} />
+                      </div>
+                      <div className="up-badge-modal-body">
+                        <div className="up-badge-modal-title-row">
+                          <span className="up-badge-modal-name">{selectedBadge.label}</span>
+                          {selectedBadge.earned && selectedBadge.count && selectedBadge.count > 1 && (
+                            <span className="up-badge-modal-count">×{selectedBadge.count}</span>
+                          )}
+                          {!selectedBadge.earned && (
+                            <span className="up-badge-modal-locked-pill">Locked</span>
+                          )}
+                        </div>
+                        <p className="up-badge-modal-desc">{selectedBadge.desc}</p>
+                      </div>
+                    </div>
+                  </>
+                )}
+              </>
+            )}
+          </aside>
+
+          {/* Right main content */}
+          <div className="up-main-content">
+            <div className="up-card-header">
               <div>
-                <h1 className="up-title">{user?.name}</h1>
+                <h1 className="up-title">Profile</h1>
                 <p className="up-desc">Update your skills, interests, and contribution preferences.</p>
               </div>
             </div>
-          </div>
 
-          {error && (
-            <div className="notice error" role="alert">
-              {error}
-              {!profile && (
-                <button className="btn btn-s mt12" onClick={() => setAttempt(a => a + 1)}>Try again</button>
-              )}
+            <div className="up-tabs">
+              <button className={`up-tab${activeTab === 'profile' ? ' active' : ''}`} onClick={() => setActiveTab('profile')}>Profile</button>
             </div>
-          )}
 
-          <fieldset className="up-fields" disabled={saving}>
-            <section className="up-section">
-              <h2 className="up-section-title">Account details</h2>
-              <div className="up-account-fields">
-                <label className="up-field-label">
-                  Full name
-                  <input
-                    className="up-field-input"
-                    type="text"
-                    value={nameValue}
-                    onChange={e => { setNameValue(e.target.value); setSaved(false) }}
-                    placeholder="Your name"
-                    autoComplete="name"
-                  />
-                </label>
-                <label className="up-field-label">
-                  Email address
-                  <input
-                    className="up-field-input"
-                    type="email"
-                    value={emailValue}
-                    onChange={e => { setEmailValue(e.target.value); setSaved(false) }}
-                    placeholder="you@example.com"
-                    autoComplete="email"
-                  />
-                </label>
-              </div>
-            </section>
-
-            <hr className="up-divider" />
-
-            {loading ? (
-              <p className="up-loading" role="status">Loading profile…</p>
-            ) : profile && (
+            {activeTab === 'profile' && (
               <>
-                <section className="up-section">
-                  <h2 className="up-section-title">Which languages are you comfortable with?</h2>
-                  <ChipSelector
-                    label="Programming languages"
-                    options={LANGUAGE_OPTIONS}
-                    selected={languagesSelected}
-                    onChange={v => { setLanguagesSelected(s => s.includes(v) ? s.filter(x => x !== v) : [...s, v]); setSaved(false) }}
-                    allowCustom
-                  />
-                </section>
+                {error && (
+                  <div className="notice error" role="alert">
+                    {error}
+                    {!profile && (
+                      <button className="btn btn-s mt12" onClick={() => setAttempt(a => a + 1)}>Try again</button>
+                    )}
+                  </div>
+                )}
 
-                <section className="up-section">
-                  <h2 className="up-section-title">What's your open-source contribution experience?</h2>
-                  <ExperienceSelector value={experience} onChange={v => { setExperience(v); setSaved(false) }} />
-                </section>
+                <fieldset className="up-fields" disabled={saving}>
+                  <section className="up-section">
+                    <h2 className="up-section-title">Account details</h2>
+                    <div className="up-account-fields">
+                      <label className="up-field-label">
+                        Full name
+                        <input
+                          className="up-field-input"
+                          type="text"
+                          value={nameValue}
+                          onChange={e => { setNameValue(e.target.value); setSaved(false) }}
+                          placeholder="Your name"
+                          autoComplete="name"
+                        />
+                      </label>
+                      <label className="up-field-label">
+                        Email address
+                        <input
+                          className="up-field-input"
+                          type="email"
+                          value={emailValue}
+                          onChange={e => { setEmailValue(e.target.value); setSaved(false) }}
+                          placeholder="you@example.com"
+                          autoComplete="email"
+                        />
+                      </label>
+                    </div>
+                  </section>
 
-                <section className="up-section">
-                  <h2 className="up-section-title">What are you interested in working on?</h2>
-                  <ChipSelector
-                    label="Areas of interest"
-                    options={INTEREST_OPTIONS}
-                    selected={interestsSelected}
-                    onChange={v => { setInterestsSelected(s => s.includes(v) ? s.filter(x => x !== v) : [...s, v]); setSaved(false) }}
-                    allowCustom
-                  />
-                </section>
+                  <hr className="up-divider" />
+
+                  {loading ? (
+                    <p className="up-loading" role="status">Loading profile…</p>
+                  ) : profile && (
+                    <>
+                      <section className="up-section">
+                        <h2 className="up-section-title">Which languages are you comfortable with?</h2>
+                        <ChipSelector
+                          label="Programming languages"
+                          options={LANGUAGE_OPTIONS}
+                          selected={languagesSelected}
+                          onChange={v => { setLanguagesSelected(s => s.includes(v) ? s.filter(x => x !== v) : [...s, v]); setSaved(false) }}
+                          allowCustom
+                        />
+                      </section>
+
+                      <section className="up-section">
+                        <h2 className="up-section-title">What's your open-source contribution experience?</h2>
+                        <ExperienceSelector value={experience} onChange={v => { setExperience(v); setSaved(false) }} />
+                      </section>
+
+                      <section className="up-section">
+                        <h2 className="up-section-title">What are you interested in working on?</h2>
+                        <ChipSelector
+                          label="Areas of interest"
+                          options={INTEREST_OPTIONS}
+                          selected={interestsSelected}
+                          onChange={v => { setInterestsSelected(s => s.includes(v) ? s.filter(x => x !== v) : [...s, v]); setSaved(false) }}
+                          allowCustom
+                        />
+                      </section>
+                    </>
+                  )}
+
+                  {saved && <p className="notice success" role="status">Profile saved.</p>}
+
+                  <div className="up-actions">
+                    <button className="btn btn-s" onClick={() => navigate(-1)} type="button">← Back</button>
+                    <button
+                      className="btn btn-p"
+                      disabled={saving || (!profile && !loading)}
+                      onClick={() => void handleSave()}
+                    >
+                      {saving ? 'Saving…' : 'Save changes'}
+                    </button>
+                  </div>
+                </fieldset>
               </>
             )}
+          </div>
 
-            {saved && <p className="notice success" role="status">Profile saved.</p>}
-
-            <div className="up-actions">
-              <button className="btn btn-s" onClick={() => navigate(-1)} type="button">← Back</button>
-              <button
-                className="btn btn-p"
-                disabled={saving || (!profile && !loading)}
-                onClick={() => void handleSave()}
-              >
-                {saving ? 'Saving…' : 'Save changes'}
-              </button>
-            </div>
-          </fieldset>
         </div>
       </main>
     </div>

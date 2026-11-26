@@ -35,7 +35,7 @@ describe('AuthProvider', () => {
     renderWithAuth((c) => { ctx = c })
 
     act(() => {
-      ctx.login('tok', 'ref', { id: '1', email: 'a@b.com', name: 'Alice' }, false)
+      ctx.login('tok', 'ref', { id: '1', email: 'a@b.com', name: 'Alice', github_username: null }, false)
     })
 
     expect(sessionStorage.getItem('token')).toBe('tok')
@@ -48,7 +48,7 @@ describe('AuthProvider', () => {
     renderWithAuth((c) => { ctx = c })
 
     act(() => {
-      ctx.login('tok', 'ref', { id: '1', email: 'a@b.com', name: 'Alice' }, true)
+      ctx.login('tok', 'ref', { id: '1', email: 'a@b.com', name: 'Alice', github_username: null }, true)
     })
 
     expect(localStorage.getItem('token')).toBe('tok')

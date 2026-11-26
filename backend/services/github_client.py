@@ -120,6 +120,43 @@ class GitHubClient:
         await self._check_response(response)
         return response.json()
 
+    async def get_user_prs(self, username: str, state: str = "open") -> list[dict[str, Any]]:
+        q = f"is:pr author:{username}"
+        if state in ("open", "closed"):
+            q += f" state:{state}"
+        items: list[dict[str, Any]] = []
+        page = 1
+        while True:
+            response = await self._http.get(
+                "https://api.github.com/search/issues",
+                params={
+                    "q": q,
+                    "per_page": 100,
+                    "page": page,
+                    "sort": "updated",
+                    "order": "desc",
+                },
+                headers=self._auth_headers(),
+            )
+            await self._check_response(response)
+            data = response.json()
+            batch = data.get("items", [])
+            items.extend(batch)
+            if len(batch) < 100 or len(items) >= data.get("total_count", 0):
+                break
+            page += 1
+        return items
+
+    async def get_check_runs(self, owner: str, repo: str, ref: str) -> list[dict[str, Any]]:
+        response = await self._http.get(
+            f"https://api.github.com/repos/{owner}/{repo}/commits/{ref}/check-runs",
+            headers={**self._auth_headers(), "Accept": "application/vnd.github+json"},
+        )
+        if response.status_code == 404:
+            return []
+        await self._check_response(response)
+        return response.json().get("check_runs", [])
+
     async def graphql(self, query: str, variables: dict[str, Any] | None = None) -> dict[str, Any]:
         payload: dict[str, Any] = {"query": query}
         if variables:
