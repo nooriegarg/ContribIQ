@@ -2,7 +2,7 @@
 # All packages are Apache 2.0, MIT, or BSD licensed
 
 # Web framework
-fastapi==0.162.0
+fastapi==0.165.0
 uvicorn[standard]==0.54.0
 python-multipart==0.0.12
 
