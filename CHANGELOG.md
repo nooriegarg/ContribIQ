@@ -1,3 +1,10 @@
+# [1.2.0](https://github.com/nooriegarg/ContribIQ/compare/v1.1.5...v1.2.0) (2026-11-26)
+
+
+### Features
+
+* Automatic Good First Issue Generator from Codebase Analysis  ([#207](https://github.com/nooriegarg/ContribIQ/issues/207)) ([8954657](https://github.com/nooriegarg/ContribIQ/commit/89546575de25966777e77faef10f4ac96c7b0f59))
+
 ## [1.1.4](https://github.com/nooriegarg/ContribIQ/compare/v1.1.3...v1.1.4) (2026-11-26)
 
 
