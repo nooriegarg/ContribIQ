@@ -183,3 +183,33 @@ export interface ReadinessResult {
 export async function getReadinessScore(taskId: string, issueNumber: number): Promise<ReadinessResult> {
   return apiCall<ReadinessResult>(`/analysis/result/${taskId}/readiness/${issueNumber}`)
 }
+
+export interface GeneratedIssue {
+  title: string
+  description: string
+  files_affected: string[]
+  skills: string[]
+  difficulty: number
+  estimated_hours: number
+  why_beginner_friendly: string
+  gap_kind: 'todo' | 'untested' | 'missing_docstring'
+  source: 'ai_generated'
+}
+
+export async function getGeneratedIssues(taskId: string): Promise<GeneratedIssue[]> {
+  return apiCall<GeneratedIssue[]>(`/analysis/result/${taskId}/generated-issues`)
+}
+
+export interface SimilarRepo {
+  full_name: string
+  description: string | null
+  stars: number
+  language: string | null
+  topics: string[]
+  html_url: string
+  open_issues: number
+}
+
+export async function getSimilarRepos(taskId: string): Promise<SimilarRepo[]> {
+  return apiCall<SimilarRepo[]>(`/analysis/result/${taskId}/similar-repos`)
+}
