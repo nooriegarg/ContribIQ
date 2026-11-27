@@ -142,6 +142,29 @@ describe('AuthProvider', () => {
     expect(stored.name).toBe('Session Bob')
   })
 
+  it('logout clears analysis and onboarding keys from sessionStorage', () => {
+    sessionStorage.setItem('token', 'tok')
+    sessionStorage.setItem('analysis:task-1', '{}')
+    sessionStorage.setItem('onboarding-plan-task-1', '{}')
+    sessionStorage.setItem('profile:user-1', '{}')
+
+    let ctx!: ReturnType<typeof useAuth>
+    renderWithAuth((c) => { ctx = c })
+
+    act(() => { ctx.logout() })
+
+    expect(sessionStorage.getItem('analysis:task-1')).toBeNull()
+    expect(sessionStorage.getItem('onboarding-plan-task-1')).toBeNull()
+    expect(sessionStorage.getItem('profile:user-1')).toBeNull()
+  })
+
+  it('updateUser is a no-op when user is null', () => {
+    let ctx!: ReturnType<typeof useAuth>
+    renderWithAuth((c) => { ctx = c })
+    act(() => { ctx.updateUser({ name: 'Ghost' }) })
+    expect(ctx.user).toBeNull()
+  })
+
   it('syncAccessToken updates token when auth:token-refreshed fires', () => {
     localStorage.setItem('token', 'old-tok')
 
