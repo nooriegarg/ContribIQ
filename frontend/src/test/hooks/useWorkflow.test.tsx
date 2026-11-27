@@ -28,7 +28,7 @@ function WorkflowConsumer() {
 
 function RouterHarness({ ctx }: { ctx: WorkflowContext }) {
   return (
-    <MemoryRouter initialEntries={['/']} future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+    <MemoryRouter initialEntries={['/']}>
       <Routes>
         <Route path="/" element={<Outlet context={ctx} />}>
           <Route index element={<WorkflowConsumer />} />
