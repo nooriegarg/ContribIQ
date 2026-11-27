@@ -1,4 +1,4 @@
-import '@testing-library/jest-dom'
+import '@testing-library/jest-dom/vitest'
 import { vi } from 'vitest'
 
 // Provide a full in-memory localStorage/sessionStorage mock for all test files.

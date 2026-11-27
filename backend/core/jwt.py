@@ -1,8 +1,9 @@
 from datetime import datetime, timedelta, timezone
 from uuid import UUID
 
+import jwt
 from fastapi import HTTPException
-from jose import ExpiredSignatureError, JWTError, jwt
+from jwt import ExpiredSignatureError, InvalidTokenError
 
 from backend.core.config import get_settings
 
@@ -37,5 +38,5 @@ def decode_token(token: str) -> dict:
         return jwt.decode(token, settings.SECRET_KEY, algorithms=[_ALGORITHM])
     except ExpiredSignatureError:
         raise HTTPException(status_code=401, detail="Token has expired")
-    except JWTError:
+    except InvalidTokenError:
         raise HTTPException(status_code=401, detail="Could not validate credentials")
