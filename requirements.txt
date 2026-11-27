@@ -41,7 +41,7 @@ tree-sitter==0.27.0
 tree-sitter-python==0.23.6
 
 # LLM provider (unified interface — Ollama / Anthropic / OpenAI switchable via env)
-litellm==1.106.3
+litellm==1.110.3
 
 # Embeddings (CPU-only, code-optimised)
 fastembed==0.9.1
