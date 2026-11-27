@@ -47,7 +47,7 @@ litellm==1.106.3
 fastembed==0.9.1
 
 # Server-Sent Events
-sse-starlette==3.6.0
+sse-starlette==3.7.1
 
 # Rate limiting
 slowapi==0.1.10
