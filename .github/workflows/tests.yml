@@ -79,3 +79,6 @@ jobs:
           GITHUB_CLIENT_SECRET: ci-client-secret
           FRONTEND_URL: http://localhost:3000
         run: python -m pytest backend/tests/ -v --cov=backend --cov-fail-under=50
+
+      - name: Run Bandit security scan
+        run: python -m bandit -r backend/ --severity-level medium -q

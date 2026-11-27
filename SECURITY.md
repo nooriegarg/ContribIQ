@@ -15,7 +15,10 @@ Since ContribIQ is still in early development, we currently maintain security fi
 
 If you find a security vulnerability in ContribIQ, **please do not open a public GitHub issue.**
 
-Instead, report it privately by emailing the maintainers or using GitHub's private vulnerability reporting feature (Security tab → Report a vulnerability).
+Instead, report it privately using GitHub's private vulnerability reporting feature:
+**[Report a vulnerability](https://github.com/nooriegarg/ContribIQ/security/advisories/new)**
+
+You can also reach the maintainers via the Security tab → "Report a vulnerability" on this repository.
 
 Please include:
 - A description of the vulnerability
