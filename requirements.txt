@@ -8,7 +8,7 @@ python-multipart==0.0.34
 
 # Configuration
 pydantic-settings==2.16.3
-email-validator==2.3.0
+email-validator==2.4.0
 
 # Database (async SQLAlchemy + PostgreSQL + migrations)
 sqlalchemy[asyncio]==2.1.9
