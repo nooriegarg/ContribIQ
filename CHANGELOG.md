@@ -1,3 +1,10 @@
+# [1.4.0](https://github.com/nooriegarg/ContribIQ/compare/v1.3.1...v1.4.0) (2026-11-27)
+
+
+### Features
+
+* add Similar Repositories step to contribution workflow ([#214](https://github.com/nooriegarg/ContribIQ/issues/214)) ([711ea10](https://github.com/nooriegarg/ContribIQ/commit/711ea10e00ccd04ebd5cc2cb08c95c4b04a6f941))
+
 ## [1.1.4](https://github.com/nooriegarg/ContribIQ/compare/v1.1.3...v1.1.4) (2026-11-26)
 
 
