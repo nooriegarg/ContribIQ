@@ -88,7 +88,6 @@ describe('apiCall', () => {
   it('clears tokens and redirects when refresh returns no access_token', async () => {
     localStorage.setItem('token', 'old-token')
     localStorage.setItem('refreshToken', 'refresh-token')
-    const assignMock = vi.fn()
     Object.defineProperty(window, 'location', { value: { href: '' }, writable: true })
     mockFetch
       .mockResolvedValueOnce(mockResponse({}, 401))
@@ -96,7 +95,6 @@ describe('apiCall', () => {
     const { apiCall } = await import('../../api/client')
     await expect(apiCall('/protected')).rejects.toThrow('Session expired')
     expect(localStorage.getItem('token')).toBeNull()
-    assignMock
   })
 
   it('skips refresh for auth endpoints on 401', async () => {
