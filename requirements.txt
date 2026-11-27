@@ -25,7 +25,7 @@ PyJWT==2.10.1
 
 # HTTP client + GitHub API
 httpx==0.28.1
-gidgethub==6.0.0
+gidgethub==6.0.1
 
 # Task queue (async-native, Apache 2.0)
 # taskiq-redis is the broker client — it speaks the Redis wire protocol.
