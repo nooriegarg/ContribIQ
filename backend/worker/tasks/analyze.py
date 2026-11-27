@@ -111,6 +111,16 @@ async def analyze_repository(owner: str, repo_name: str, github_token: str | Non
                 await score_issues.kiq(owner=owner, repo_name=repo_name, github_token=github_token)
             except Exception:
                 logger.exception("Could not trigger issue scoring for cached %s/%s", owner, repo_name)
+            try:
+                from backend.worker.tasks.generate_suggested_issues import generate_suggested_issues_task
+                await generate_suggested_issues_task.kiq(
+                    owner=owner,
+                    repo_name=repo_name,
+                    file_tree=cached.get("file_tree", []),
+                    github_token=github_token,
+                )
+            except Exception:
+                logger.exception("Could not trigger generated issues for cached %s/%s", owner, repo_name)
             return cached
 
         _emit("file_tree", "started")
@@ -243,5 +253,17 @@ async def analyze_repository(owner: str, repo_name: str, github_token: str | Non
     # Kick off issue scoring in the background so matches are ready for the issues page
     from backend.worker.tasks.score_issues import score_issues
     await score_issues.kiq(owner=owner, repo_name=repo_name, github_token=github_token)
+
+    # Kick off AI-generated issue suggestions (scans source for TODO/FIXME/untested modules)
+    try:
+        from backend.worker.tasks.generate_suggested_issues import generate_suggested_issues_task
+        await generate_suggested_issues_task.kiq(
+            owner=owner,
+            repo_name=repo_name,
+            file_tree=tree,
+            github_token=github_token,
+        )
+    except Exception:
+        logger.exception("Could not trigger generated issue suggestions for %s/%s", owner, repo_name)
 
     return result

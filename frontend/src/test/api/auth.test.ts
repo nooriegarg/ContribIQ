@@ -61,6 +61,40 @@ describe('auth API', () => {
     })
   })
 
+  describe('getGitHubLinkUrl', () => {
+    it('returns a URL containing /auth/github/link', async () => {
+      const { getGitHubLinkUrl } = await import('../../api/auth')
+      expect(getGitHubLinkUrl()).toContain('/auth/github/link')
+    })
+
+    it('appends redirect param when redirectPath is provided', async () => {
+      const { getGitHubLinkUrl } = await import('../../api/auth')
+      const url = getGitHubLinkUrl('/dashboard')
+      expect(url).toContain('redirect=')
+      expect(url).toContain('%2Fdashboard')
+    })
+  })
+
+  describe('refreshMe', () => {
+    it('calls /auth/me and returns mapped user', async () => {
+      mockApiCall.mockResolvedValueOnce({ id: '1', email: 'a@b.com', name: 'Alice', github_username: 'alice-gh' })
+      const { refreshMe } = await import('../../api/auth')
+      const result = await refreshMe()
+      expect(result.id).toBe('1')
+      expect(result.email).toBe('a@b.com')
+      expect(result.name).toBe('Alice')
+      expect(result.github_username).toBe('alice-gh')
+      expect(mockApiCall).toHaveBeenCalledWith('/auth/me')
+    })
+
+    it('falls back to email prefix when name is null', async () => {
+      mockApiCall.mockResolvedValueOnce({ id: '2', email: 'user@example.com', name: null, github_username: null })
+      const { refreshMe } = await import('../../api/auth')
+      const result = await refreshMe()
+      expect(result.name).toBe('user')
+    })
+  })
+
   describe('updateCurrentUser', () => {
     it('calls PATCH /auth/me and returns mapped user', async () => {
       mockApiCall.mockResolvedValueOnce({ id: '1', email: 'new@example.com', name: 'New Name' })

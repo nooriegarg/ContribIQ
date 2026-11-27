@@ -120,157 +120,157 @@ export default function RepoPRsPage() {
     <div>
       <WorkflowHeader title="Pull Requests" subtitle="Track your contributions" step={6} />
       <div style={{ padding: '32px 40px' }}>
-      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16, marginBottom: 20, flexWrap: 'wrap' }}>
-        <div>
-          <h1 style={{ fontSize: 22, fontWeight: 800, color: 'var(--b10)', margin: 0, marginBottom: 4 }}>
-            Pull Requests
-          </h1>
-          {repoFull && (
-            <p style={{ fontSize: 13, color: 'var(--gd)', margin: 0 }}>
-              Your contributions to <strong>{repoFull}</strong>
-              {prs && prs.length > 0 && <span style={{ marginLeft: 8, color: 'var(--gd)' }}>({prs.length} total)</span>}
-            </p>
-          )}
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <label htmlFor="pr-state-filter" style={{ fontSize: 13, fontWeight: 600, color: 'var(--b10)', whiteSpace: 'nowrap' }}>
-            Show:
-          </label>
-          <select
-            id="pr-state-filter"
-            value={prState}
-            onChange={e => setPrState(e.target.value as PRState)}
-            style={{
-              padding: '6px 10px',
-              border: '1px solid #ccd4df',
-              borderRadius: 8,
-              fontSize: 13,
-              fontWeight: 600,
-              color: 'var(--b10)',
-              background: 'white',
-              cursor: 'pointer',
-              appearance: 'auto',
-            }}
-          >
-            {(Object.keys(STATE_LABELS) as PRState[]).map(s => (
-              <option key={s} value={s}>{STATE_LABELS[s]}</option>
-            ))}
-          </select>
-        </div>
-      </div>
-
-      {linkedBanner && (
-        <div className="notice success" role="status" style={{ marginBottom: 20 }}>
-          GitHub account connected successfully! Your pull requests are loading below.
-          <button
-            type="button"
-            onClick={() => setLinkedBanner(false)}
-            style={{ marginLeft: 12, background: 'none', border: 'none', cursor: 'pointer', fontWeight: 700, color: 'inherit' }}
-            aria-label="Dismiss"
-          >✕</button>
-        </div>
-      )}
-
-      {loading && <p className="up-loading" role="status">Loading pull requests…</p>}
-      {error && <div className="notice error" role="alert">{error}</div>}
-
-      {!loading && !error && prs !== null && prs.length === 0 && (
-        <div className="up-prs-empty">
-          <p className="muted">{emptyMsg}</p>
-        </div>
-      )}
-
-      {pagePRs.length > 0 && (
-        <div className="up-prs">
-          {pagePRs.map(pr => (
-            <div className="up-pr-card" key={`${pr.state}-${pr.number}`}>
-              <div className="up-pr-header">
-                <div className="up-pr-meta">
-                  <span className="up-pr-num">#{pr.number}</span>
-                  <StateBadge state={pr.state} mergedAt={pr.merged_at} />
-                  {pr.draft && <span className="badge badge-blue">Draft</span>}
-                </div>
-                <CIBadge status={pr.ci_status} />
-              </div>
-              <a className="up-pr-title" href={pr.url ?? '#'} target="_blank" rel="noreferrer">{pr.title}</a>
-              {pr.checks.length > 0 && (
-                <div className="up-pr-checks">
-                  {pr.checks.map((check, i) => (
-                    <a
-                      key={i}
-                      className={`up-check-item up-check-${check.conclusion ?? check.status}`}
-                      href={check.url ?? '#'}
-                      target="_blank"
-                      rel="noreferrer"
-                      title={check.name}
-                    >
-                      <CheckIcon conclusion={check.conclusion} status={check.status} />
-                      <span className="up-check-name">{check.name}</span>
-                    </a>
-                  ))}
-                </div>
-              )}
-              {pr.updated_at && (
-                <p className="up-pr-updated">Updated {new Date(pr.updated_at).toLocaleDateString()}</p>
-              )}
-            </div>
-          ))}
-        </div>
-      )}
-
-      {totalPages > 1 && (
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, marginTop: 24 }}>
-          <button
-            onClick={() => setPage(p => Math.max(1, p - 1))}
-            disabled={page === 1}
-            style={{
-              padding: '6px 14px',
-              borderRadius: 8,
-              border: '1px solid #ccd4df',
-              background: page === 1 ? '#f5f7fa' : 'white',
-              color: page === 1 ? '#aab4c0' : 'var(--b10)',
-              fontWeight: 600,
-              fontSize: 13,
-              cursor: page === 1 ? 'default' : 'pointer',
-            }}
-          >← Prev</button>
-
-          {Array.from({ length: totalPages }, (_, i) => i + 1).map(p => (
-            <button
-              key={p}
-              onClick={() => setPage(p)}
+        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16, marginBottom: 20, flexWrap: 'wrap' }}>
+          <div>
+            <h1 style={{ fontSize: 22, fontWeight: 800, color: 'var(--b10)', margin: 0, marginBottom: 4 }}>
+              Pull Requests
+            </h1>
+            {repoFull && (
+              <p style={{ fontSize: 13, color: 'var(--gd)', margin: 0 }}>
+                Your contributions to <strong>{repoFull}</strong>
+                {prs && prs.length > 0 && <span style={{ marginLeft: 8, color: 'var(--gd)' }}>({prs.length} total)</span>}
+              </p>
+            )}
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <label htmlFor="pr-state-filter" style={{ fontSize: 13, fontWeight: 600, color: 'var(--b10)', whiteSpace: 'nowrap' }}>
+              Show:
+            </label>
+            <select
+              id="pr-state-filter"
+              value={prState}
+              onChange={e => setPrState(e.target.value as PRState)}
               style={{
-                padding: '6px 12px',
+                padding: '6px 10px',
+                border: '1px solid #ccd4df',
                 borderRadius: 8,
-                border: '1px solid',
-                borderColor: p === page ? 'var(--accent, #6366f1)' : '#ccd4df',
-                background: p === page ? 'var(--accent, #6366f1)' : 'white',
-                color: p === page ? 'white' : 'var(--b10)',
+                fontSize: 13,
+                fontWeight: 600,
+                color: 'var(--b10)',
+                background: 'white',
+                cursor: 'pointer',
+                appearance: 'auto',
+              }}
+            >
+              {(Object.keys(STATE_LABELS) as PRState[]).map(s => (
+                <option key={s} value={s}>{STATE_LABELS[s]}</option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        {linkedBanner && (
+          <div className="notice success" role="status" style={{ marginBottom: 20 }}>
+            GitHub account connected successfully! Your pull requests are loading below.
+            <button
+              type="button"
+              onClick={() => setLinkedBanner(false)}
+              style={{ marginLeft: 12, background: 'none', border: 'none', cursor: 'pointer', fontWeight: 700, color: 'inherit' }}
+              aria-label="Dismiss"
+            >✕</button>
+          </div>
+        )}
+
+        {loading && <p className="up-loading" role="status">Loading pull requests…</p>}
+        {error && <div className="notice error" role="alert">{error}</div>}
+
+        {!loading && !error && prs !== null && prs.length === 0 && (
+          <div className="up-prs-empty">
+            <p className="muted">{emptyMsg}</p>
+          </div>
+        )}
+
+        {pagePRs.length > 0 && (
+          <div className="up-prs">
+            {pagePRs.map(pr => (
+              <div className="up-pr-card" key={`${pr.state}-${pr.number}`}>
+                <div className="up-pr-header">
+                  <div className="up-pr-meta">
+                    <span className="up-pr-num">#{pr.number}</span>
+                    <StateBadge state={pr.state} mergedAt={pr.merged_at} />
+                    {pr.draft && <span className="badge badge-blue">Draft</span>}
+                  </div>
+                  <CIBadge status={pr.ci_status} />
+                </div>
+                <a className="up-pr-title" href={pr.url ?? '#'} target="_blank" rel="noreferrer">{pr.title}</a>
+                {pr.checks.length > 0 && (
+                  <div className="up-pr-checks">
+                    {pr.checks.map((check, i) => (
+                      <a
+                        key={i}
+                        className={`up-check-item up-check-${check.conclusion ?? check.status}`}
+                        href={check.url ?? '#'}
+                        target="_blank"
+                        rel="noreferrer"
+                        title={check.name}
+                      >
+                        <CheckIcon conclusion={check.conclusion} status={check.status} />
+                        <span className="up-check-name">{check.name}</span>
+                      </a>
+                    ))}
+                  </div>
+                )}
+                {pr.updated_at && (
+                  <p className="up-pr-updated">Updated {new Date(pr.updated_at).toLocaleDateString()}</p>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+
+        {totalPages > 1 && (
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, marginTop: 24 }}>
+            <button
+              onClick={() => setPage(p => Math.max(1, p - 1))}
+              disabled={page === 1}
+              style={{
+                padding: '6px 14px',
+                borderRadius: 8,
+                border: '1px solid #ccd4df',
+                background: page === 1 ? '#f5f7fa' : 'white',
+                color: page === 1 ? '#aab4c0' : 'var(--b10)',
                 fontWeight: 600,
                 fontSize: 13,
-                cursor: 'pointer',
-                minWidth: 36,
+                cursor: page === 1 ? 'default' : 'pointer',
               }}
-            >{p}</button>
-          ))}
+            >← Prev</button>
 
-          <button
-            onClick={() => setPage(p => Math.min(totalPages, p + 1))}
-            disabled={page === totalPages}
-            style={{
-              padding: '6px 14px',
-              borderRadius: 8,
-              border: '1px solid #ccd4df',
-              background: page === totalPages ? '#f5f7fa' : 'white',
-              color: page === totalPages ? '#aab4c0' : 'var(--b10)',
-              fontWeight: 600,
-              fontSize: 13,
-              cursor: page === totalPages ? 'default' : 'pointer',
-            }}
-          >Next →</button>
-        </div>
-      )}
-    </div>
+            {Array.from({ length: totalPages }, (_, i) => i + 1).map(p => (
+              <button
+                key={p}
+                onClick={() => setPage(p)}
+                style={{
+                  padding: '6px 12px',
+                  borderRadius: 8,
+                  border: '1px solid',
+                  borderColor: p === page ? 'var(--accent, #6366f1)' : '#ccd4df',
+                  background: p === page ? 'var(--accent, #6366f1)' : 'white',
+                  color: p === page ? 'white' : 'var(--b10)',
+                  fontWeight: 600,
+                  fontSize: 13,
+                  cursor: 'pointer',
+                  minWidth: 36,
+                }}
+              >{p}</button>
+            ))}
+
+            <button
+              onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+              disabled={page === totalPages}
+              style={{
+                padding: '6px 14px',
+                borderRadius: 8,
+                border: '1px solid #ccd4df',
+                background: page === totalPages ? '#f5f7fa' : 'white',
+                color: page === totalPages ? '#aab4c0' : 'var(--b10)',
+                fontWeight: 600,
+                fontSize: 13,
+                cursor: page === totalPages ? 'default' : 'pointer',
+              }}
+            >Next →</button>
+          </div>
+        )}
+      </div>
     </div>
   )
 }
