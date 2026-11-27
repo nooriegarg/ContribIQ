@@ -189,4 +189,79 @@ describe('analyze API', () => {
       await expect(getSimilarRepos('bad-task')).rejects.toThrow('Not found')
     })
   })
+
+  describe('subscribeToProgress', () => {
+    const mockFetch = vi.fn()
+
+    beforeEach(() => {
+      vi.stubGlobal('fetch', mockFetch)
+      mockFetch.mockReset()
+    })
+
+    function makeStream(chunks: string[]) {
+      let idx = 0
+      const encoder = new TextEncoder()
+      return {
+        ok: true,
+        status: 200,
+        body: {
+          getReader: () => ({
+            read: vi.fn().mockImplementation(() => {
+              if (idx < chunks.length) {
+                return Promise.resolve({ value: encoder.encode(chunks[idx++]), done: false })
+              }
+              return Promise.resolve({ value: undefined, done: true })
+            }),
+            cancel: vi.fn().mockResolvedValue(undefined),
+          }),
+        },
+      }
+    }
+
+    it('calls onProgress for progress events and onDone for done event', async () => {
+      const progressPayload = { step: 'fetching', status: 'running' }
+      const donePayload = { status: 'completed', owner: 'org', repo: 'repo', metadata: { full_name: 'org/repo', stars: 0, forks: 0, open_issues: 0, language: null, topics: [], description: null }, tech_stack: [], directory_map: [] }
+      const chunks = [
+        `event: progress\ndata: ${JSON.stringify(progressPayload)}\n\n`,
+        `event: done\ndata: ${JSON.stringify(donePayload)}\n\n`,
+      ]
+      mockFetch.mockResolvedValueOnce(makeStream(chunks))
+      const onProgress = vi.fn()
+      const onDone = vi.fn()
+      const onError = vi.fn()
+      const { subscribeToProgress } = await import('../../api/analyze')
+      subscribeToProgress('task-1', onProgress, onDone, onError)
+      await new Promise(r => setTimeout(r, 50))
+      expect(onProgress).toHaveBeenCalledWith(progressPayload)
+      expect(onDone).toHaveBeenCalledWith(donePayload)
+      expect(onError).not.toHaveBeenCalled()
+    })
+
+    it('calls onError when fetch returns 401', async () => {
+      mockFetch.mockResolvedValueOnce({ ok: false, status: 401, body: null })
+      const onError = vi.fn()
+      const { subscribeToProgress } = await import('../../api/analyze')
+      subscribeToProgress('task-1', vi.fn(), vi.fn(), onError)
+      await new Promise(r => setTimeout(r, 50))
+      expect(onError).toHaveBeenCalledWith(expect.stringContaining('session'))
+    })
+
+    it('calls onError when event is error type', async () => {
+      const chunks = [`event: error\ndata: ${JSON.stringify({ error: 'Pipeline failed' })}\n\n`]
+      mockFetch.mockResolvedValueOnce(makeStream(chunks))
+      const onError = vi.fn()
+      const { subscribeToProgress } = await import('../../api/analyze')
+      subscribeToProgress('task-1', vi.fn(), vi.fn(), onError)
+      await new Promise(r => setTimeout(r, 50))
+      expect(onError).toHaveBeenCalledWith('Pipeline failed')
+    })
+
+    it('returns an AbortController', async () => {
+      mockFetch.mockResolvedValueOnce({ ok: false, status: 500, body: null })
+      const { subscribeToProgress } = await import('../../api/analyze')
+      const controller = subscribeToProgress('task-1', vi.fn(), vi.fn(), vi.fn())
+      expect(controller).toBeInstanceOf(AbortController)
+      controller.abort()
+    })
+  })
 })

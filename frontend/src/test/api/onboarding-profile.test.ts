@@ -57,4 +57,18 @@ describe('profile API', () => {
     expect(result).toEqual(stored)
     expect(mockApiCall).toHaveBeenCalledWith('/users/me/badges')
   })
+
+  it('getMyPRs calls correct endpoint with default state', async () => {
+    mockApiCall.mockResolvedValueOnce([])
+    const { getMyPRs } = await import('../../api/profile')
+    await getMyPRs()
+    expect(mockApiCall).toHaveBeenCalledWith('/users/me/prs?state=open')
+  })
+
+  it('getMyPRs includes github_token when provided', async () => {
+    mockApiCall.mockResolvedValueOnce([])
+    const { getMyPRs } = await import('../../api/profile')
+    await getMyPRs('gh-token-123', 'closed')
+    expect(mockApiCall).toHaveBeenCalledWith('/users/me/prs?state=closed&github_token=gh-token-123')
+  })
 })
