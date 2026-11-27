@@ -1,8 +1,8 @@
 # ContribIQ
 
-An AI-powered open-source contributor onboarding assistant. Point it at any GitHub repository and it analyses the codebase, generates a personalised onboarding path, scores open issues against your skill profile, and answers plain-language questions about the code — all running locally via Ollama.
+An AI-powered open-source contributor onboarding assistant. Point it at any GitHub repository and it analyses the codebase, generates a personalised onboarding path, scores open issues against your skill profile, and answers plain-language questions about the code — all powered by Claude Haiku via the Anthropic API.
 
-**License:** Apache 2.0 &nbsp;|&nbsp; **Stack:** FastAPI · React 18 · PostgreSQL · Valkey · TaskIQ · LiteLLM · Ollama · pgvector
+**License:** Apache 2.0 &nbsp;|&nbsp; **Stack:** FastAPI · React 18 · PostgreSQL · Valkey · TaskIQ · LiteLLM · Claude Haiku · pgvector
 
 ---
 
@@ -37,11 +37,11 @@ There are existing tools that touch parts of this problem space. ContribIQ is di
 |---|---|---|
 | **GitHub's "good first issue" label** | Tags issues for newcomers | ContribIQ scores each open issue against *your* skill profile and ranks them by fit — not just difficulty |
 | **Swimm / CodeSee** | In-repo documentation and code walkthroughs | ContribIQ is external — it analyses *any* public repo without the maintainer needing to opt in |
-| **GitHub Copilot "explain this"** | Answers code questions in the editor | ContribIQ builds a RAG index of the repo and answers questions in a browser — no IDE required, and with the default Ollama setup no code leaves your machine |
+| **GitHub Copilot "explain this"** | Answers code questions in the editor | ContribIQ builds a RAG index of the repo and answers questions in a browser — no IDE required |
 | **OpenDigger / DevStats** | Repository health and contribution metrics | ContribIQ focuses on the *individual contributor onboarding experience*, not aggregate project statistics |
 | **Raw LLM chat (ChatGPT / Claude)** | General-purpose Q&A | ContribIQ grounds answers in the repository's own source files via pgvector retrieval, which reduces made-up file names and function signatures (small local models can still get things wrong) |
 
-The key design constraint that makes these differences possible: **LLM inference runs locally via Ollama by default**. With that setup, no repository code, user questions, or contributor profile data are sent to an external LLM provider. Repository files are still read from GitHub, and if you point LiteLLM at a hosted model, that data goes to that provider. This matters for contributors analysing private forks or employer codebases. See [ADR-01](docs/ARCHITECTURE.md#adr-01--async-task-queue-for-repository-analysis) and [ADR-05](docs/ARCHITECTURE.md#adr-05--litellm-as-the-llm-abstraction-layer) for the architectural decisions behind this.
+The key design constraint that makes these differences possible: **LLM inference runs through Claude Haiku via the Anthropic API, routed through LiteLLM**. The `AI_MODEL` setting can be switched to any LiteLLM-compatible provider (Ollama, OpenAI, etc.) via environment variable. See [ADR-01](docs/ARCHITECTURE.md#adr-01--async-task-queue-for-repository-analysis) and [ADR-05](docs/ARCHITECTURE.md#adr-05--litellm-as-the-llm-abstraction-layer) for the architectural decisions behind this.
 
 ---
 
@@ -75,7 +75,7 @@ flowchart TB
 
     subgraph EXT["External services"]
         gh{{"GitHub<br/>OAuth + REST API"}}
-        ol{{"Ollama<br/>local LLM via LiteLLM"}}
+        ol{{"Anthropic<br/>Claude Haiku via LiteLLM"}}
     end
 
     unwired["Built but not wired up yet:<br/>(none — all tasks dispatched)"]
@@ -111,7 +111,7 @@ flowchart TB
 - **Background worker (`backend/worker/`)** runs the slow jobs (repository analysis and diagram generation) so HTTP requests return immediately. The API puts a job on a queue in Valkey, a TaskIQ worker picks it up, and the result is stored back in Valkey for 24 hours.
 - **PostgreSQL + pgvector** holds users, contributor profiles, and the `repositories` and `code_chunks` tables that back Q&A. `analyze_repository` saves the repository row and queues `embed_repository`, which fills `code_chunks`. The `issues` table is not filled yet (see the dashed box in the diagram).
 - **Valkey** is the task queue, the task-result store, the 24-hour analysis cache, and the place OAuth CSRF state is kept.
-- **GitHub** is used for OAuth login and for reading repository data. **Ollama** (called through LiteLLM) writes the onboarding plan and the architecture diagram.
+- **GitHub** is used for OAuth login and for reading repository data. **Claude Haiku** (called through LiteLLM) writes the onboarding plan and the architecture diagram.
 
 ### Where to start reading
 
@@ -127,10 +127,10 @@ flowchart TB
 `DashboardPage` calls `POST /analysis/start` (`frontend/src/api/analyze.ts`). `analysis.py` queues `analyze_repository` with `.kiq()`. The worker (`worker/tasks/analyze.py`) reads metadata, the file tree, issues and pull requests from GitHub, detects the tech stack, and stores the result in Valkey. Meanwhile the browser follows `GET /analysis/stream/{task_id}` (server-sent events) and then loads `GET /analysis/result/{task_id}` to show the overview.
 
 **Architecture diagram on the overview page**
-`ArchDiagram.tsx` calls `POST /analysis/{task_id}/diagram`, which queues `generate_diagram`. The worker samples source files from GitHub (`architecture_service.py`), asks Ollama for components and connections (`ai_service.py`), validates the answer, and returns Mermaid text. The browser polls `GET /analysis/diagram/{id}` and renders it.
+`ArchDiagram.tsx` calls `POST /analysis/{task_id}/diagram`, which queues `generate_diagram`. The worker samples source files from GitHub (`architecture_service.py`), asks Claude Haiku for components and connections (`ai_service.py`), validates the answer, and returns Mermaid text. The browser polls `GET /analysis/diagram/{id}` and renders it.
 
 **Onboarding plan**
-`OnboardingPage` calls `GET /analysis/result/{task_id}/onboarding`. This one does not use the worker: `onboarding_service.py` runs inside the API request, prompts Ollama, filters unsafe shell commands from the answer, and falls back to a basic plan if the model output is unusable.
+`OnboardingPage` calls `GET /analysis/result/{task_id}/onboarding`. This one does not use the worker: `onboarding_service.py` runs inside the API request, prompts Claude Haiku, filters unsafe shell commands from the answer, and falls back to a basic plan if the model output is unusable.
 
 > The diagram shows connections found in the code. It is a map for contributors, not a complete list of every module. Features marked in the [Feature Areas](#feature-areas) tables as not dispatched, not mounted or not shown in the UI are intentionally left out of the arrows.
 
@@ -144,7 +144,7 @@ flowchart TB
 - Node.js 20+
 - PostgreSQL 16 with the [pgvector](https://github.com/pgvector/pgvector) extension
 - [Valkey](https://valkey.io) 8+ (or any Redis-protocol-compatible server)
-- [Ollama](https://ollama.com) with `qwen2.5-coder:7b` pulled
+- Anthropic API key (for Claude Haiku)
 
 ### Backend
 
@@ -168,19 +168,16 @@ npm run dev
 # → http://localhost:5173
 ```
 
-### Local AI model
+### AI model (Claude Haiku)
 
-Start Ollama, then download the model used by diagram and onboarding generation:
+Set your Anthropic API key in `.env`:
 
-```bash
-ollama pull qwen2.5-coder:7b
-ollama pull qwen2.5-coder:1.5b   # used by codebase Q&A
-ollama list
+```env
+AI_MODEL=anthropic/claude-haiku-4-5-20251001
+ANTHROPIC_API_KEY=sk-ant-...
 ```
 
-The 7B download is approximately 4.7 GB (the 1.5B Q&A model is much smaller). Ollama must remain running, and the model
-must appear in `ollama list`. After installing it, reload the repository overview
-to request a new diagram; previously failed jobs are not retried automatically.
+LiteLLM routes all AI calls through this model. To switch to a different provider (e.g. Ollama for local inference), change `AI_MODEL` to `ollama/qwen2.5-coder:7b` and set `OLLAMA_URL` accordingly.
 
 Architecture generation reads a bounded sample of the repository's README,
 entry points, routing/worker/database wiring, and Compose configuration from
@@ -339,7 +336,7 @@ The screens do not use the mockup's sample scores or repository statistics.
 Personalized ranking, difficulty scores, issue-specific AI explanations,
 file/impact analysis, similar-PR search, and readiness assessment
 are explicitly unavailable until their backend integrations exist. Onboarding
-generation requires a running Ollama model, and architecture generation also requires the worker (onboarding runs inside the API request).
+generation requires an Anthropic API key, and architecture generation also requires the worker (onboarding runs inside the API request).
 Time availability is an unsaved planning preference; checklist state is local
 to the detail view and is not saved to the contributor account.
 
@@ -389,7 +386,7 @@ This is the core async pipeline. It runs as a background TaskIQ worker so the HT
 | Sub-feature | Status | Key files |
 |---|---|---|
 | Overview page (React) | Done | `frontend/src/pages/OverviewPage.tsx`, `frontend/src/components/RepoBanner.tsx`, `frontend/src/components/TechStack.tsx`, `frontend/src/components/DirectoryMap.tsx`, `frontend/src/components/RepoStats.tsx`, `frontend/src/utils/format.ts` |
-| AI-generated architecture diagram (Mermaid via LiteLLM + Ollama) | Done | `backend/services/architecture_service.py` (samples source files), `backend/services/ai_service.py` (prompt + validation + Mermaid output), `backend/worker/tasks/generate_diagram.py`, `frontend/src/components/ArchDiagram.tsx`. Endpoints: `POST /analysis/{task_id}/diagram` starts the task, `GET /analysis/diagram/{diagram_task_id}` returns the result |
+| AI-generated architecture diagram (Mermaid via LiteLLM + Claude Haiku) | Done | `backend/services/architecture_service.py` (samples source files), `backend/services/ai_service.py` (prompt + validation + Mermaid output), `backend/worker/tasks/generate_diagram.py`, `frontend/src/components/ArchDiagram.tsx`. Endpoints: `POST /analysis/{task_id}/diagram` starts the task, `GET /analysis/diagram/{diagram_task_id}` returns the result |
 
 ---
 
@@ -399,7 +396,7 @@ Personalised "first 30 minutes" plan generated by the LLM from the repo's README
 
 | Sub-feature | Status | Key files |
 |---|---|---|
-| Onboarding plan generation (LLM) | Done (synchronous) | `backend/services/onboarding_service.py`, served by `GET /analysis/result/{task_id}/onboarding` in `backend/api/routes/analysis.py`. Runs in the API request (not a worker task) through LiteLLM + Ollama, sanitises suggested shell commands, and returns a fallback plan if the model output is unusable |
+| Onboarding plan generation (LLM) | Done (synchronous) | `backend/services/onboarding_service.py`, served by `GET /analysis/result/{task_id}/onboarding` in `backend/api/routes/analysis.py`. Runs in the API request (not a worker task) through LiteLLM + Claude Haiku, sanitises suggested shell commands, and returns a fallback plan if the model output is unusable |
 | Onboarding path React screen | Done | `frontend/src/pages/OnboardingPage.tsx`, `frontend/src/components/Timeline.tsx`, `frontend/src/components/CodeBlock.tsx`, `frontend/src/components/FileReadList.tsx`, `frontend/src/components/IssuePreviewCard.tsx`; previews not found in the analysis are marked as unverified AI suggestions |
 
 ---
@@ -441,7 +438,7 @@ Selecting an issue triggers a deeper analysis: plain-language AI explanation, wh
 | Sub-feature | Status | Key files |
 |---|---|---|
 | pgvector + fastembed embedding pipeline | Done | `backend/db/vector.py`, `backend/models/code_chunk.py`, `backend/services/embedding_service.py`, `backend/worker/tasks/embed_repo.py`, `backend/worker/tasks/analyze.py`, `alembic/versions/0008_create_code_chunks.py`. fastembed `BAAI/bge-small-en-v1.5` model (384 dims), filters to text files ≤ 100 KB and embeds them in batches of 20. `analyze_repository` upserts the `repositories` row and queues `embed_repository`. Existing databases created with the earlier 768-dim column need a migration and re-embedding |
-| Issue deep-dive backend | Done | `backend/services/issue_detail_service.py`, `backend/api/routes/issues.py` (`GET /issues/{issue_number}/detail?owner=&repo=`). AI explanation + impact chain via Ollama, similar PRs from GitHub API. Requires `score_issues` to have run first (issues table must be populated) |
+| Issue deep-dive backend | Done | `backend/services/issue_detail_service.py`, `backend/api/routes/issues.py` (`GET /issues/{issue_number}/detail?owner=&repo=`). AI explanation + impact chain via Claude Haiku, similar PRs from GitHub API. Requires `score_issues` to have run first (issues table must be populated) |
 | Issue deep-dive React screen | Done | `frontend/src/pages/IssueDetailPage.tsx`, `frontend/src/components/Checklist.tsx`, `frontend/src/components/ReadinessScore.tsx`, `frontend/src/components/SimilarPRs.tsx`, `frontend/src/components/ImpactChain.tsx`. All tabs (Understanding, Similar PRs, Readiness) are wired to backend endpoints |
 
 ---
@@ -519,8 +516,8 @@ The **Not started** rows, and the rows marked *not dispatched*, *not mounted* or
 | ORM / migrations | SQLAlchemy (async) + Alembic | Typed models, version-controlled schema |
 | Cache / task broker | Valkey 8 | BSD-3-Clause Redis-compatible fork; `taskiq-redis` client connects to it over the Redis wire protocol |
 | Task queue | TaskIQ | Async-native, no Celery overhead |
-| LLM interface | LiteLLM | Single API for Ollama, Anthropic, OpenAI — swap via env var |
-| Local LLM | Ollama + Qwen2.5-Coder (7B for diagrams/onboarding, 1.5B for Q&A) | Runs entirely on-device; no data leaves the machine |
+| LLM interface | LiteLLM | Single API for Anthropic, Ollama, OpenAI — swap via `AI_MODEL` env var |
+| AI model | Claude Haiku (via Anthropic API) | Fast, capable hosted model; switch to Ollama for fully local inference |
 | Embeddings | fastembed (`BAAI/bge-small-en-v1.5`) | CPU-only, lightweight, 384 dims |
 | Frontend | React 18 + TypeScript + Vite | Fast HMR, strict types |
 | Auth | JWT (python-jose) + bcrypt (passlib) | Stateless access tokens, 7-day refresh tokens |
