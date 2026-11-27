@@ -2,6 +2,10 @@
 
 An AI-powered open-source contributor onboarding assistant. Point it at any GitHub repository and it analyses the codebase, generates a personalised onboarding path, scores open issues against your skill profile, and answers plain-language questions about the code — all running locally via Ollama.
 
+[![OpenSSF Scorecard](https://api.securityscorecards.dev/projects/github.com/nooriegarg/ContribIQ/badge)](https://securityscorecards.dev/viewer/?uri=github.com/nooriegarg/ContribIQ)
+[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
+[![CI](https://github.com/nooriegarg/ContribIQ/actions/workflows/tests.yml/badge.svg)](https://github.com/nooriegarg/ContribIQ/actions/workflows/tests.yml)
+
 **License:** Apache 2.0 &nbsp;|&nbsp; **Stack:** FastAPI · React 18 · PostgreSQL · Valkey · TaskIQ · LiteLLM · Ollama · pgvector
 
 ---
