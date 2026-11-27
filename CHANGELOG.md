@@ -1,3 +1,10 @@
+## [1.4.1](https://github.com/nooriegarg/ContribIQ/compare/v1.4.0...v1.4.1) (2026-11-27)
+
+
+### Bug Fixes
+
+* **security:** replace python-jose with PyJWT, harden workflow permissions, add OpenSSF badge ([#219](https://github.com/nooriegarg/ContribIQ/issues/219)) ([d771d5c](https://github.com/nooriegarg/ContribIQ/commit/d771d5cb40bb0938eaaec93d44dfb56167c66847))
+
 ## [1.1.4](https://github.com/nooriegarg/ContribIQ/compare/v1.1.3...v1.1.4) (2026-11-26)
 
 
