@@ -78,7 +78,7 @@ flowchart TB
         ol{{"Ollama<br/>local LLM via LiteLLM"}}
     end
 
-    unwired["Built but not wired up yet:<br/>score_issues"]
+    unwired["Built but not wired up yet:<br/>(none — all tasks dispatched)"]
 
     user --> pages
     pages --> client
@@ -379,7 +379,7 @@ This is the core async pipeline. It runs as a background TaskIQ worker so the HT
 | TaskIQ + Valkey task queue | Done | `backend/worker/broker.py`, `backend/worker/tasks/__init__.py`, `docker-compose.yml` |
 | Analysis pipeline tasks (file tree → tech stack → directories) | Done | `backend/worker/tasks/analyze.py`, `backend/services/tech_stack_service.py` |
 | SSE progress endpoint | Done | `backend/api/routes/analysis.py` (`POST /analysis/start`, `GET /analysis/stream/{task_id}`, `GET /analysis/result/{task_id}`), `frontend/src/api/analyze.ts`, `frontend/src/hooks/useAnalysis.ts` |
-| Worker tasks registered with TaskIQ | Done | `backend/worker/tasks/__init__.py` registers `analyze_repository`, `generate_diagram` and `score_issues`. Only `analyze_repository` and `generate_diagram` are dispatched by the API today (`.kiq()` in `analysis.py`) |
+| Worker tasks registered with TaskIQ | Done | `backend/worker/tasks/__init__.py` registers `analyze_repository`, `generate_diagram` and `score_issues`. All three are dispatched: `analyze_repository` and `generate_diagram` via `analysis.py`; `score_issues` via `analyze.py` lines 110–111 (after issue fetch) and 244–245 (end of pipeline) |
 | Analysis result caching (Valkey, 24 h TTL) | Done | `backend/services/cache_service.py` — cache key is `analysis:{owner}:{repo}:{sha}`, 24 h TTL, wired into `analyze_repository` task |
 
 ---
@@ -499,9 +499,8 @@ The **Not started** rows, and the rows marked *not dispatched*, *not mounted* or
 
 **Suggested first contributions (smallest scope first):**
 
-1. **Wire `score_issues` into the analysis pipeline** — call `score_issues.kiq()` from `analyze_repository` after issues are fetched so difficulty and match scores populate automatically
-2. **Expose a `/analysis/result/{task_id}/matches` endpoint** — returns ranked issues from `matching_service.py` for the current contributor profile
-3. **Fix GitHub Actions detection** — `tech_stack_service.py` routes `.github/workflows/` through the `endswith` branch instead of substring matching, so `GitHub Actions` is never detected
+1. **Expose a `/analysis/result/{task_id}/matches` endpoint** — returns ranked issues from `matching_service.py` for the current contributor profile
+2. **Fix GitHub Actions detection** — `tech_stack_service.py` routes `.github/workflows/` through the `endswith` branch instead of substring matching, so `GitHub Actions` is never detected
 
 **Before opening a PR:**
 

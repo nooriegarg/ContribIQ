@@ -40,6 +40,7 @@ const steps = [
   { title: 'Recommended Issues', subtitle: 'Find your first contribution', suffix: '/issues' },
   { title: 'Issue Deep-Dive', subtitle: 'Understand & contribute', suffix: '/issues' },
   { title: 'My Pull Requests', subtitle: 'Track your contributions', suffix: '/prs' },
+  { title: 'Similar Repositories', subtitle: 'Explore related projects', suffix: '/similar' },
 ]
 
 function isAnalysisReady(taskId: string) {
@@ -75,7 +76,8 @@ export default function WorkflowLayout({ hero = false }: { hero?: boolean }) {
   const [analysisReady, setAnalysisReady] = useState(() => !hero && isAnalysisReady(taskId))
   const [avatarUrl, setAvatarUrl] = useState(() => user ? getAvatarUrl(user.id) : null)
   const basePath = `/overview/${encodeURIComponent(taskId)}`
-  const currentStep = detail ? 5 : location.pathname.endsWith('/prs') ? 6
+  const currentStep = detail ? 5 : location.pathname.endsWith('/similar') ? 7
+    : location.pathname.endsWith('/prs') ? 6
     : location.pathname.endsWith('/issues') ? 4
     : location.pathname.endsWith('/profile') ? 3 : location.pathname.endsWith('/onboarding') ? 2 : 1
   const [maxStep, setMaxStep] = useState<number>(() => loadProgress(taskId))
@@ -233,7 +235,7 @@ export default function WorkflowLayout({ hero = false }: { hero?: boolean }) {
             </div>
             <nav className="sb-steps" aria-label="Workflow steps">
               {steps.map((step, index) => {
-                const disabled = !result || (index + 1 > maxStep + 1 && index !== 5) || (index === 4 && !issueNumber) || (index === 5 && maxStep < 3)
+                const disabled = !result || (index + 1 > maxStep + 1 && index !== 5 && index !== 6) || (index === 4 && !issueNumber) || (index === 5 && maxStep < 3) || (index === 6 && maxStep < 3)
                 const isDone = index + 1 <= maxStep && index + 1 !== currentStep
                 const isActive = index + 1 === currentStep
                 const content = <><span className="sb-dot">{isDone ? <WorkflowIcon name="check" /> : index + 1}</span><span><span className="sb-lbl">{step.title}</span><span className="sb-sub">{step.subtitle}</span></span></>

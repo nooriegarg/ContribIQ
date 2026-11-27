@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useAnalysis, getRepoHistory, type RepoHistoryEntry } from '../hooks/useAnalysis'
 import { parseGitHubRepository } from '../utils/validation'
 import WorkflowIcon from '../components/WorkflowIcon'
@@ -7,9 +7,10 @@ import { useAuth } from '../context/useAuth'
 
 export default function DashboardPage() {
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
   const analysis = useAnalysis()
   const { user } = useAuth()
-  const [repository, setRepository] = useState('')
+  const [repository, setRepository] = useState(() => searchParams.get('repo') ?? '')
   const [inputError, setInputError] = useState('')
   const [existingEntry, setExistingEntry] = useState<RepoHistoryEntry | null>(null)
   const busy = ['starting', 'running', 'done'].includes(analysis.status)

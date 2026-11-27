@@ -304,6 +304,39 @@ def _sse(event: str, data: dict) -> str:
     return f"event: {event}\ndata: {json.dumps(data)}\n\n"
 
 
+@router.get("/result/{task_id}/generated-issues")
+async def get_generated_issues(
+    task_id: str,
+    current_user: User = Depends(get_current_user),
+):
+    try:
+        result = await _get_task_result(task_id)
+    except Exception:
+        raise HTTPException(status_code=404, detail="Analysis task not found")
+
+    if result is None:
+        raise HTTPException(status_code=202, detail="Analysis still in progress")
+
+    if result.is_err or (result.return_value or {}).get("status") != "completed":
+        raise HTTPException(status_code=500, detail="Analysis task failed")
+
+    data = result.return_value or {}
+    owner = data.get("owner", "")
+    repo = data.get("repo", "")
+    if not owner or not repo:
+        raise HTTPException(status_code=400, detail="Repository identity missing from analysis result")
+
+    cache_key = f"generated_issues:{owner}/{repo}"
+    cached = await get_key(cache_key)
+    if cached:
+        try:
+            return json.loads(cached)
+        except Exception:
+            pass
+
+    return []
+
+
 @router.get("/result/{task_id}/matches")
 async def get_matched_issues(
     task_id: str,
@@ -385,3 +418,82 @@ async def get_matched_issues(
     await set_key(cache_key, json.dumps(ranked), ttl=86400)
 
     return ranked
+
+
+@router.get("/result/{task_id}/similar-repos")
+async def get_similar_repos(
+    task_id: str,
+    current_user: User = Depends(get_current_user),
+):
+    try:
+        result = await _get_task_result(task_id)
+    except Exception:
+        raise HTTPException(status_code=404, detail="Analysis task not found")
+
+    if result is None:
+        raise HTTPException(status_code=202, detail="Analysis still in progress")
+
+    if result.is_err or (result.return_value or {}).get("status") != "completed":
+        raise HTTPException(status_code=500, detail="Analysis task failed")
+
+    data = result.return_value or {}
+    owner = data.get("owner", "")
+    repo = data.get("repo", "")
+    if not owner or not repo:
+        raise HTTPException(status_code=400, detail="Repository identity missing from analysis result")
+
+    cache_key = f"similar_repos:{owner}/{repo}"
+    cached = await get_key(cache_key)
+    if cached:
+        try:
+            return json.loads(cached)
+        except Exception:
+            pass
+
+    tech_stack: list[str] = data.get("tech_stack", [])
+    language: str | None = (data.get("metadata") or {}).get("language")
+    description: str | None = (data.get("metadata") or {}).get("description")
+
+    # Build search query: top 3 tech stack items + primary language + "good first issue"
+    terms = tech_stack[:3] if tech_stack else []
+    if language and language not in terms:
+        terms.insert(0, language)
+    query = " ".join(terms) + " good-first-issues:>0"
+
+    settings = get_settings()
+    headers: dict[str, str] = {"Accept": "application/vnd.github+json", "X-GitHub-Api-Version": "2022-11-28"}
+    github_token = await _resolve_github_token(str(current_user.id))
+    if github_token:
+        headers["Authorization"] = f"Bearer {github_token}"
+
+    try:
+        async with httpx.AsyncClient(timeout=10) as client:
+            response = await client.get(
+                "https://api.github.com/search/repositories",
+                params={"q": query, "sort": "stars", "order": "desc", "per_page": 10},
+                headers=headers,
+            )
+        response.raise_for_status()
+        items = response.json().get("items", [])
+    except Exception as exc:
+        logger.warning("GitHub repo search failed for %s/%s: %s", owner, repo, exc)
+        return []
+
+    # Exclude the repo being analyzed itself
+    current_full = f"{owner}/{repo}".lower()
+    repos = [
+        {
+            "full_name": item["full_name"],
+            "description": item.get("description"),
+            "stars": item.get("stargazers_count", 0),
+            "language": item.get("language"),
+            "topics": item.get("topics", []),
+            "html_url": item["html_url"],
+            "open_issues": item.get("open_issues_count", 0),
+        }
+        for item in items
+        if item["full_name"].lower() != current_full
+    ][:5]
+
+    await set_key(cache_key, json.dumps(repos), ttl=86400)
+    return repos
