@@ -38,7 +38,7 @@ taskiq-redis==1.2.4
 # Code analysis for issue difficulty scoring
 radon==6.0.1
 tree-sitter==0.27.0
-tree-sitter-python==0.23.6
+tree-sitter-python==0.25.0
 
 # LLM provider (unified interface — Ollama / Anthropic / OpenAI switchable via env)
 litellm==1.106.3
